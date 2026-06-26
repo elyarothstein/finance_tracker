@@ -15,7 +15,11 @@ const storageKeys = {
 const money = new Intl.NumberFormat("en-US", { style: "currency", currency: "USD" });
 
 const monthlyCategories = [
-  { key: "expenses", title: "Expenses", help: "Add every recurring expense and the monthly amount.", item: "Expense", placeholder: "Rent, groceries, phone", className: "costs", recurringDefault: true },
+  { key: "rent", title: "Rent", help: "Add rent payments here so the app can track housing costs automatically.", item: "Rent", placeholder: "Apartment rent", className: "rent-costs", recurringDefault: true },
+  { key: "utilities", title: "Utilities", help: "Add necessary utility bills like electricity, water, internet, heat, and phone.", item: "Utility", placeholder: "Electric, internet, water", className: "utility-costs", recurringDefault: true },
+  { key: "groceries", title: "Groceries", help: "Add grocery spending here so the app can recognize food-at-home costs automatically.", item: "Grocery", placeholder: "Supermarket, grocery delivery", className: "grocery-costs", recurringDefault: false },
+  { key: "gas", title: "Gas", help: "Add gas and fuel spending here so the app can track transportation fuel costs.", item: "Gas", placeholder: "Gas station, fuel", className: "gas-costs", recurringDefault: false },
+  { key: "expenses", title: "Other necessary expenses", help: "Expenses are necessary purchases. Use this for essentials that are not rent, utilities, groceries, or gas.", item: "Expense", placeholder: "Insurance, medical, childcare", className: "costs", recurringDefault: true },
   { key: "purchases", title: "Purchases", help: "Add anything you spend money on, like clothes, shoes, or restaurants.", item: "Purchase", placeholder: "Clothes, shoes, restaurant", className: "purchases", recurringDefault: false },
   { key: "gifts", title: "Gifts", help: "Add money spent on gifts for birthdays, holidays, thank-yous, and surprises.", item: "Gift", placeholder: "Birthday gift, holiday present", className: "gifts", recurringDefault: false },
   { key: "monthlyInvestments", title: "Investments", help: "Add money invested this month, separate from savings.", item: "Investment", placeholder: "Index fund, brokerage, retirement", className: "monthly-investments", recurringDefault: false }
@@ -53,9 +57,11 @@ const logoutButton = document.querySelector("#logoutButton");
 const monthlyNav = document.querySelector("#monthlyNav");
 const vacationNav = document.querySelector("#vacationNav");
 const investmentsNav = document.querySelector("#investmentsNav");
+const summaryNav = document.querySelector("#summaryNav");
 const monthlyPage = document.querySelector("#monthlyPage");
 const vacationPage = document.querySelector("#vacationPage");
 const investmentsPage = document.querySelector("#investmentsPage");
+const summaryPage = document.querySelector("#summaryPage");
 const budgetForm = document.querySelector("#budgetForm");
 const vacationForm = document.querySelector("#vacationForm");
 const investmentsForm = document.querySelector("#investmentsForm");
@@ -69,23 +75,29 @@ const clearVacationButton = document.querySelector("#clearVacationButton");
 const addInvestmentButton = document.querySelector("#addInvestmentButton");
 const refreshMarketButton = document.querySelector("#refreshMarketButton");
 const clearInvestmentsButton = document.querySelector("#clearInvestmentsButton");
+const refreshSummaryButton = document.querySelector("#refreshSummaryButton");
 const monthlyInputs = document.querySelector("#monthlyInputs");
 const vacationInputs = document.querySelector("#vacationInputs");
 const investmentRows = document.querySelector("#investmentRows");
 const monthlySummary = document.querySelector("#monthlySummary");
 const vacationSummary = document.querySelector("#vacationSummary");
 const investmentSummary = document.querySelector("#investmentSummary");
+const historySummary = document.querySelector("#historySummary");
 const marketQuotes = document.querySelector("#marketQuotes");
 const monthlyBreakdown = document.querySelector("#monthlyBreakdown");
 const vacationBreakdown = document.querySelector("#vacationBreakdown");
 const investmentBreakdown = document.querySelector("#investmentBreakdown");
+const historyTableWrap = document.querySelector("#historyTableWrap");
+const vacationHistoryWrap = document.querySelector("#vacationHistoryWrap");
 
 const fields = {
   monthlyIncome: document.querySelector("#monthlyIncome"),
+  incomeFrequency: document.querySelector("#incomeFrequency"),
   extraIncome: document.querySelector("#extraIncome"),
   savePercent: document.querySelector("#savePercent"),
   charityPercent: document.querySelector("#charityPercent"),
   tripName: document.querySelector("#tripName"),
+  tripMonth: document.querySelector("#tripMonth"),
   tripBudget: document.querySelector("#tripBudget"),
   annualReturn: document.querySelector("#annualReturn"),
   projectionYears: document.querySelector("#projectionYears")
@@ -127,6 +139,12 @@ function numberValue(input) {
   return Math.max(0, Number(input.value) || 0);
 }
 
+function monthlyIncomeFrom(amount, frequency = "monthly") {
+  if (frequency === "weekly") return amount * 52 / 12;
+  if (frequency === "biweekly") return amount * 26 / 12;
+  return amount;
+}
+
 function escapeHtml(value) {
   return String(value ?? "").replace(/[&<>"']/g, (character) => ({
     "&": "&amp;",
@@ -145,16 +163,22 @@ function normalizeItem(item, recurringDefault = false) {
   return {
     name: item?.name ?? "",
     amount: item?.amount ?? "",
-    recurring: Boolean(item?.recurring ?? recurringDefault)
+    recurring: Boolean(item?.recurring ?? recurringDefault),
+    subcategory: item?.subcategory || "other"
   };
 }
 
 function emptyMonthlyBudget() {
   return {
     monthlyIncome: "",
+    incomeFrequency: "monthly",
     extraIncome: "",
     savePercent: "",
     charityPercent: "",
+    rent: itemDefaults(true),
+    utilities: itemDefaults(true),
+    groceries: itemDefaults(false),
+    gas: itemDefaults(false),
     expenses: itemDefaults(true),
     purchases: itemDefaults(false),
     gifts: itemDefaults(false),
@@ -164,12 +188,21 @@ function emptyMonthlyBudget() {
 
 function normalizeMonthlyBudget(budget = emptyMonthlyBudget()) {
   const empty = emptyMonthlyBudget();
+  const oldExpenses = budget.expenses?.length ? budget.expenses.map((item) => normalizeItem(item, true)) : [];
+  const promotedSubcategories = ["rent", "utilities", "groceries", "gas"];
+  const migratedItems = (subcategory) => oldExpenses.filter((item) => item.subcategory === subcategory);
+  const remainingExpenses = oldExpenses.filter((item) => !promotedSubcategories.includes(item.subcategory));
   return {
     monthlyIncome: budget.monthlyIncome ?? "",
+    incomeFrequency: budget.incomeFrequency || "monthly",
     extraIncome: budget.extraIncome ?? "",
     savePercent: budget.savePercent ?? "",
     charityPercent: budget.charityPercent ?? "",
-    expenses: (budget.expenses?.length ? budget.expenses : empty.expenses).map((item) => normalizeItem(item, true)),
+    rent: (budget.rent?.length ? budget.rent : migratedItems("rent").length ? migratedItems("rent") : empty.rent).map((item) => normalizeItem(item, true)),
+    utilities: (budget.utilities?.length ? budget.utilities : migratedItems("utilities").length ? migratedItems("utilities") : empty.utilities).map((item) => normalizeItem(item, true)),
+    groceries: (budget.groceries?.length ? budget.groceries : migratedItems("groceries").length ? migratedItems("groceries") : empty.groceries).map((item) => normalizeItem(item, false)),
+    gas: (budget.gas?.length ? budget.gas : migratedItems("gas").length ? migratedItems("gas") : empty.gas).map((item) => normalizeItem(item, false)),
+    expenses: (remainingExpenses.length ? remainingExpenses : empty.expenses).map((item) => normalizeItem(item, true)),
     purchases: (budget.purchases?.length ? budget.purchases : empty.purchases).map((item) => normalizeItem(item, false)),
     gifts: (budget.gifts?.length ? budget.gifts : empty.gifts).map((item) => normalizeItem(item, false)),
     monthlyInvestments: (budget.monthlyInvestments?.length ? budget.monthlyInvestments : empty.monthlyInvestments).map((item) => normalizeItem(item, false))
@@ -185,9 +218,14 @@ function newMonthFromPrevious(previousBudget) {
   const previous = normalizeMonthlyBudget(previousBudget);
   return {
     monthlyIncome: previous.monthlyIncome,
+    incomeFrequency: previous.incomeFrequency || "monthly",
     extraIncome: previous.extraIncome,
     savePercent: previous.savePercent,
     charityPercent: previous.charityPercent,
+    rent: recurringItems(previous.rent).map((item) => ({ ...item, recurring: true })),
+    utilities: recurringItems(previous.utilities).map((item) => ({ ...item, recurring: true })),
+    groceries: recurringItems(previous.groceries),
+    gas: recurringItems(previous.gas),
     expenses: recurringItems(previous.expenses).map((item) => ({ ...item, recurring: true })),
     purchases: recurringItems(previous.purchases),
     gifts: recurringItems(previous.gifts),
@@ -226,6 +264,7 @@ function emptyVacationBudget() {
     id: makeTripId(),
     createdAt: new Date().toISOString(),
     tripName: "",
+    tripMonth: monthKey(new Date()),
     tripBudget: "",
     travel: itemDefaults(false),
     hotels: itemDefaults(false),
@@ -241,10 +280,12 @@ function makeTripId() {
 
 function normalizeVacationBudget(vacation = emptyVacationBudget()) {
   const empty = emptyVacationBudget();
+  const createdAt = vacation.createdAt || new Date().toISOString();
   const normalized = {
     id: vacation.id || makeTripId(),
-    createdAt: vacation.createdAt || new Date().toISOString(),
+    createdAt,
     tripName: vacation.tripName ?? "",
+    tripMonth: vacation.tripMonth || monthKey(new Date(createdAt)),
     tripBudget: vacation.tripBudget ?? ""
   };
   vacationCategories.forEach((category) => {
@@ -439,12 +480,19 @@ function setMode(nextMode) {
 function showPage(pageName) {
   const isVacation = pageName === "vacation";
   const isInvestments = pageName === "investments";
-  monthlyPage.classList.toggle("active", !isVacation && !isInvestments);
+  const isSummary = pageName === "summary";
+  monthlyPage.classList.toggle("active", !isVacation && !isInvestments && !isSummary);
   vacationPage.classList.toggle("active", isVacation);
   investmentsPage.classList.toggle("active", isInvestments);
-  monthlyNav.classList.toggle("active", !isVacation && !isInvestments);
+  summaryPage.classList.toggle("active", isSummary);
+  monthlyNav.classList.toggle("active", !isVacation && !isInvestments && !isSummary);
   vacationNav.classList.toggle("active", isVacation);
   investmentsNav.classList.toggle("active", isInvestments);
+  summaryNav.classList.toggle("active", isSummary);
+
+  if (isSummary) {
+    renderHistorySummary();
+  }
 }
 
 function showApp(email) {
@@ -463,6 +511,7 @@ function showApp(email) {
   calculateMonthly();
   calculateVacation();
   calculateInvestments();
+  renderHistorySummary();
 }
 
 function showLogin() {
@@ -542,7 +591,9 @@ function makeRow(type, category, item = {}) {
     row.remove();
     saveAll();
   });
-  row.querySelectorAll("input").forEach((input) => input.addEventListener("input", saveAll));
+  row.querySelectorAll("input, select").forEach((input) => {
+    ["input", "change"].forEach((eventName) => input.addEventListener(eventName, saveAll));
+  });
   document.querySelector(`#${type}-${category.key}-rows`).append(row);
 }
 
@@ -600,6 +651,7 @@ function collectRows(type, category) {
 function collectMonthlyBudget() {
   const budget = {
     monthlyIncome: numberValue(fields.monthlyIncome),
+    incomeFrequency: fields.incomeFrequency.value,
     extraIncome: numberValue(fields.extraIncome),
     savePercent: numberValue(fields.savePercent),
     charityPercent: numberValue(fields.charityPercent)
@@ -615,6 +667,7 @@ function collectVacationBudget() {
     id: currentTripId || makeTripId(),
     createdAt: new Date().toISOString(),
     tripName: fields.tripName.value.trim(),
+    tripMonth: fields.tripMonth.value || monthKey(new Date()),
     tripBudget: numberValue(fields.tripBudget)
   };
   vacationCategories.forEach((category) => {
@@ -687,6 +740,7 @@ function loadMonthlyBudget(month = currentMonth) {
 
   budgetMonth.value = currentMonth;
   fields.monthlyIncome.value = budget.monthlyIncome || "";
+  fields.incomeFrequency.value = budget.incomeFrequency || "monthly";
   fields.extraIncome.value = budget.extraIncome || "";
   fields.savePercent.value = budget.savePercent || "";
   fields.charityPercent.value = budget.charityPercent || "";
@@ -708,6 +762,7 @@ function loadVacationBudget() {
   writeJson(storageKeys.vacations, vacations);
   renderTripPicker(account);
   fields.tripName.value = vacation.tripName || "";
+  fields.tripMonth.value = vacation.tripMonth || monthKey(new Date(vacation.createdAt));
   fields.tripBudget.value = vacation.tripBudget || "";
   vacationCategories.forEach((category) => {
     document.querySelector(`#vacation-${category.key}-rows`).innerHTML = "";
@@ -732,6 +787,88 @@ function sum(items) {
   return items.reduce((total, item) => total + (Number(item.amount) || 0), 0);
 }
 
+function monthLabel(month) {
+  const [year, monthNumber] = month.split("-").map(Number);
+  return new Date(year, monthNumber - 1, 1).toLocaleDateString("en-US", {
+    month: "short",
+    year: "numeric"
+  });
+}
+
+function monthlyRollup(month, budget) {
+  const normalized = normalizeMonthlyBudget(budget);
+  const monthlyIncome = monthlyIncomeFrom(Number(normalized.monthlyIncome) || 0, normalized.incomeFrequency);
+  const extraIncome = Number(normalized.extraIncome) || 0;
+  const income = monthlyIncome + extraIncome;
+  const savings = income * ((Number(normalized.savePercent) || 0) / 100);
+  const charity = income * ((Number(normalized.charityPercent) || 0) / 100);
+  const rent = sum(normalized.rent);
+  const utilities = sum(normalized.utilities);
+  const groceries = sum(normalized.groceries);
+  const gas = sum(normalized.gas);
+  const expenses = sum(normalized.expenses);
+  const purchases = sum(normalized.purchases);
+  const gifts = sum(normalized.gifts);
+  const investments = sum(normalized.monthlyInvestments);
+  const totalSpending = rent + utilities + groceries + gas + expenses + purchases + gifts;
+  const moneyLeft = income - savings - charity - totalSpending - investments;
+
+  return {
+    month,
+    monthlyIncome,
+    extraIncome,
+    income,
+    savings,
+    charity,
+    investments,
+    rent,
+    utilities,
+    groceries,
+    gas,
+    expenses,
+    purchases,
+    gifts,
+    totalSpending,
+    moneyLeft
+  };
+}
+
+function historyRows() {
+  return [
+    { key: "monthlyIncome", label: "Income as monthly estimate" },
+    { key: "extraIncome", label: "Extra income" },
+    { key: "income", label: "Total income" },
+    { key: "savings", label: "Savings" },
+    { key: "charity", label: "Charity" },
+    { key: "investments", label: "Investments" },
+    { key: "rent", label: "Rent" },
+    { key: "utilities", label: "Utilities" },
+    { key: "groceries", label: "Groceries" },
+    { key: "gas", label: "Gas" },
+    { key: "expenses", label: "Other necessary expenses" },
+    { key: "purchases", label: "Purchases" },
+    { key: "gifts", label: "Gifts" },
+    { key: "totalSpending", label: "Total spending categories" },
+    { key: "moneyLeft", label: "Money left for spending" }
+  ];
+}
+
+function vacationCostBreakdown(trip) {
+  const normalized = normalizeVacationBudget(trip);
+  const totals = vacationCategories.reduce((summary, category) => {
+    summary[category.key] = sum(normalized[category.key]);
+    return summary;
+  }, {});
+  const totalSpent = Object.values(totals).reduce((total, value) => total + value, 0);
+
+  return {
+    ...normalized,
+    ...totals,
+    totalSpent,
+    moneyLeft: (Number(normalized.tripBudget) || 0) - totalSpent
+  };
+}
+
 function renderSummary(container, categories, totals) {
   container.innerHTML = categories.map((category) => `
     <div class="metric ${category.className}">
@@ -746,7 +883,7 @@ function renderBreakdown(container, categories, budget, emptyWord) {
     const filled = (budget[category.key] || []).filter((item) => item.name || item.amount);
     const list = filled.length ? filled.map((item) => `
       <div class="list-item">
-        <span>${escapeHtml(item.name || `Unnamed ${category.item.toLowerCase()}`)}<small class="item-meta">${item.recurring ? "Monthly" : "One-time"}</small></span>
+        <span>${escapeHtml(item.name || `Unnamed ${category.item.toLowerCase()}`)}<small class="item-meta">${itemMetaText(category, item)}</small></span>
         <strong>${money.format(Number(item.amount) || 0)}</strong>
       </div>
     `).join("") : `<div class="empty">Your ${emptyWord} for ${category.title.toLowerCase()} will appear here.</div>`;
@@ -754,18 +891,26 @@ function renderBreakdown(container, categories, budget, emptyWord) {
   }).join("");
 }
 
+function itemMetaText(category, item) {
+  return item.recurring ? "Monthly" : "One-time";
+}
+
 function calculateMonthly() {
   const budget = collectMonthlyBudget();
-  const totalIncome = budget.monthlyIncome + budget.extraIncome;
+  const totalIncome = monthlyIncomeFrom(budget.monthlyIncome, budget.incomeFrequency) + budget.extraIncome;
   const saveAmount = totalIncome * (budget.savePercent / 100);
   const charityAmount = totalIncome * (budget.charityPercent / 100);
   const totals = {
+    rent: sum(budget.rent),
+    utilities: sum(budget.utilities),
+    groceries: sum(budget.groceries),
+    gas: sum(budget.gas),
     expenses: sum(budget.expenses),
     purchases: sum(budget.purchases),
     gifts: sum(budget.gifts),
     monthlyInvestments: sum(budget.monthlyInvestments)
   };
-  const spendingLeft = totalIncome - saveAmount - charityAmount - totals.expenses - totals.purchases - totals.gifts - totals.monthlyInvestments;
+  const spendingLeft = totalIncome - saveAmount - charityAmount - totals.rent - totals.utilities - totals.groceries - totals.gas - totals.expenses - totals.purchases - totals.gifts - totals.monthlyInvestments;
   results.spendingLeft.textContent = money.format(spendingLeft);
   results.statusPill.textContent = spendingLeft < 0 ? "Over budget" : "Balanced";
   results.statusPill.classList.toggle("warning", spendingLeft < 0);
@@ -849,6 +994,143 @@ function calculateInvestments() {
   `;
 }
 
+function renderHistorySummary() {
+  if (!currentUser) return;
+  saveMonthlyBudget();
+  saveVacationBudget();
+
+  const budgets = getBudgets();
+  const userBudget = budgets[currentUser]?.months ? budgets[currentUser] : ensureUserBudget(budgets, currentUser);
+  const months = Object.keys(userBudget.months).sort();
+  const rollups = months.map((month) => monthlyRollup(month, userBudget.months[month]));
+  const rows = historyRows();
+
+  if (!rollups.length) {
+    historySummary.innerHTML = "";
+    historyTableWrap.innerHTML = '<div class="empty">Saved monthly totals will appear here after you add a month.</div>';
+  } else {
+    const totals = rows.reduce((summary, row) => {
+      summary[row.key] = rollups.reduce((total, month) => total + month[row.key], 0);
+      return summary;
+    }, {});
+
+    historySummary.innerHTML = `
+      <div class="metric invested"><span>Total income</span><strong>${money.format(totals.income)}</strong></div>
+      <div class="metric save"><span>Total savings</span><strong>${money.format(totals.savings)}</strong></div>
+      <div class="metric give"><span>Total charity</span><strong>${money.format(totals.charity)}</strong></div>
+      <div class="metric monthly-investments"><span>Total investments</span><strong>${money.format(totals.investments)}</strong></div>
+    `;
+
+    const headerCells = rollups.map((rollup) => `<th>${monthLabel(rollup.month)}</th>`).join("");
+    const bodyRows = rows.map((row) => {
+      const monthCells = rollups.map((rollup) => `<td>${money.format(rollup[row.key])}</td>`).join("");
+      return `
+        <tr>
+          <td>${row.label}</td>
+          ${monthCells}
+          <td>${money.format(totals[row.key])}</td>
+        </tr>
+      `;
+    }).join("");
+
+    historyTableWrap.innerHTML = `
+      <div class="history-table-wrap">
+        <table class="history-table">
+          <thead>
+            <tr>
+              <th>Category</th>
+              ${headerCells}
+              <th>Total</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${bodyRows}
+            <tr class="history-total-row">
+              <td>Number of saved months</td>
+              ${rollups.map(() => "<td>1</td>").join("")}
+              <td>${rollups.length}</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    `;
+  }
+
+  renderVacationHistorySummary();
+}
+
+function renderVacationHistorySummary() {
+  const vacations = getVacations();
+  const account = vacations[currentUser]?.trips ? vacations[currentUser] : ensureVacationAccount(vacations, currentUser);
+  const trips = Object.values(account.trips)
+    .map(vacationCostBreakdown)
+    .filter((trip) => trip.tripName || trip.tripBudget || trip.totalSpent)
+    .sort((a, b) => String(a.tripMonth).localeCompare(String(b.tripMonth)));
+
+  if (!trips.length) {
+    vacationHistoryWrap.innerHTML = '<div class="empty">Saved vacation totals will appear here after you add a trip.</div>';
+    return;
+  }
+
+  const totals = vacationCategories.reduce((summary, category) => {
+    summary[category.key] = trips.reduce((total, trip) => total + trip[category.key], 0);
+    return summary;
+  }, {});
+  const totalSpent = trips.reduce((total, trip) => total + trip.totalSpent, 0);
+  const totalBudget = trips.reduce((total, trip) => total + (Number(trip.tripBudget) || 0), 0);
+
+  const rows = trips.map((trip) => `
+    <tr>
+      <td>${escapeHtml(trip.tripName || "Unnamed trip")}</td>
+      <td>${monthLabel(trip.tripMonth)}</td>
+      <td>${money.format(trip.travel)}</td>
+      <td>${money.format(trip.hotels)}</td>
+      <td>${money.format(trip.food)}</td>
+      <td>${money.format(trip.activities)}</td>
+      <td>${money.format(trip.other)}</td>
+      <td>${money.format(trip.totalSpent)}</td>
+      <td>${money.format(Number(trip.tripBudget) || 0)}</td>
+      <td>${money.format(trip.moneyLeft)}</td>
+    </tr>
+  `).join("");
+
+  vacationHistoryWrap.innerHTML = `
+    <div class="history-table-wrap">
+      <table class="history-table">
+        <thead>
+          <tr>
+            <th>Vacation</th>
+            <th>Month</th>
+            <th>Travel</th>
+            <th>Hotels</th>
+            <th>Food</th>
+            <th>Activities</th>
+            <th>Other</th>
+            <th>Total spent</th>
+            <th>Budget</th>
+            <th>Left</th>
+          </tr>
+        </thead>
+        <tbody>
+          ${rows}
+          <tr class="history-total-row">
+            <td>All vacations</td>
+            <td>${trips.length}</td>
+            <td>${money.format(totals.travel)}</td>
+            <td>${money.format(totals.hotels)}</td>
+            <td>${money.format(totals.food)}</td>
+            <td>${money.format(totals.activities)}</td>
+            <td>${money.format(totals.other)}</td>
+            <td>${money.format(totalSpent)}</td>
+            <td>${money.format(totalBudget)}</td>
+            <td>${money.format(totalBudget - totalSpent)}</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  `;
+}
+
 async function refreshMarketInfo() {
   const plan = collectInvestmentPlan();
   const tickers = uniqueTickers(plan.funds);
@@ -925,6 +1207,8 @@ authForm.addEventListener("submit", handleAuth);
 monthlyNav.addEventListener("click", () => showPage("monthly"));
 vacationNav.addEventListener("click", () => showPage("vacation"));
 investmentsNav.addEventListener("click", () => showPage("investments"));
+summaryNav.addEventListener("click", () => showPage("summary"));
+refreshSummaryButton.addEventListener("click", renderHistorySummary);
 
 logoutButton.addEventListener("click", () => {
   localStorage.removeItem(storageKeys.session);
@@ -979,6 +1263,7 @@ newTripButton.addEventListener("click", () => {
 
 clearButton.addEventListener("click", () => {
   fields.monthlyIncome.value = "";
+  fields.incomeFrequency.value = "monthly";
   fields.extraIncome.value = "";
   fields.savePercent.value = "";
   fields.charityPercent.value = "";
@@ -988,6 +1273,7 @@ clearButton.addEventListener("click", () => {
 
 clearVacationButton.addEventListener("click", () => {
   fields.tripName.value = "";
+  fields.tripMonth.value = monthKey(new Date());
   fields.tripBudget.value = "";
   clearRows("vacation", vacationCategories);
   saveAll();

@@ -71,6 +71,7 @@
           <button class="nav-button active" id="monthlyNav" type="button">Monthly</button>
           <button class="nav-button" id="vacationNav" type="button">Vacation</button>
           <button class="nav-button" id="investmentsNav" type="button">Investments</button>
+          <button class="nav-button" id="summaryNav" type="button">Summary</button>
         </nav>
       </div>
       <div class="user-strip">
@@ -84,12 +85,12 @@
     </header>
 
     <main>
-      <section class="page active" id="monthlyPage">
+      <section class="page monthly-layout active" id="monthlyPage">
         <form id="budgetForm" class="input-panel">
           <div class="section-title">
             <div>
               <h2>Monthly plan</h2>
-              <p class="helper">Enter your income, goals, expenses, purchases, and gifts. Results update instantly.</p>
+              <p class="helper">Enter your income, goals, necessary categories like rent and groceries, plus purchases, gifts, and investments. Results update instantly.</p>
             </div>
           </div>
           <div class="month-tools">
@@ -100,7 +101,15 @@
             <button type="button" class="secondary" id="nextMonthButton">Start next month</button>
           </div>
           <div class="income-grid">
-            <div><label for="monthlyIncome">Monthly income</label><input id="monthlyIncome" type="number" min="0" step="0.01" placeholder="4000"></div>
+            <div><label for="monthlyIncome">Income amount</label><input id="monthlyIncome" type="number" min="0" step="0.01" placeholder="4000"></div>
+            <div>
+              <label for="incomeFrequency">Income frequency</label>
+              <select id="incomeFrequency">
+                <option value="monthly">Monthly</option>
+                <option value="weekly">Weekly</option>
+                <option value="biweekly">Every 2 weeks</option>
+              </select>
+            </div>
             <div><label for="extraIncome">Extra income</label><input id="extraIncome" type="number" min="0" step="0.01" placeholder="300"></div>
           </div>
           <div class="income-grid">
@@ -142,6 +151,7 @@
           </div>
           <div class="income-grid">
             <div><label for="tripName">Trip name</label><input id="tripName" type="text" placeholder="Summer trip"></div>
+            <div><label for="tripMonth">Trip month</label><input id="tripMonth" type="month"></div>
             <div><label for="tripBudget">Trip budget</label><input id="tripBudget" type="number" min="0" step="0.01" placeholder="2500"></div>
           </div>
           <div id="vacationInputs"></div>
@@ -213,6 +223,36 @@
             <div class="quote-grid" id="marketQuotes"></div>
           </div>
           <div class="breakdown" id="investmentBreakdown"></div>
+        </section>
+      </section>
+
+      <section class="page" id="summaryPage">
+        <div class="input-panel">
+          <div class="section-title">
+            <div>
+              <h2>Monthly summary</h2>
+              <p class="helper">View saved monthly totals across income, savings, charity, investments, expenses, purchases, gifts, and spending money left over.</p>
+            </div>
+          </div>
+          <p class="helper">The summary shows each spending category separately, plus combined spending totals across all saved months.</p>
+          <div class="actions">
+            <button type="button" class="secondary" id="refreshSummaryButton">Refresh summary</button>
+          </div>
+        </div>
+
+        <section class="results" aria-live="polite">
+          <div class="summary">
+            <h2>All saved months</h2>
+            <div class="summary-grid investment-grid" id="historySummary"></div>
+          </div>
+          <div class="breakdown">
+            <h3>Category by month</h3>
+            <div id="historyTableWrap"></div>
+          </div>
+          <div class="breakdown">
+            <h3>Vacation history</h3>
+            <div id="vacationHistoryWrap"></div>
+          </div>
         </section>
       </section>
     </main>
