@@ -1,5 +1,5 @@
 /*
-  ClearLedger app logic
+  LoviesLedger app logic
   This file controls account login, local saving, monthly budget history, and vacation trip budgets.
   Data is saved in the browser with localStorage, so it stays on this device/browser.
 */
