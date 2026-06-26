@@ -70,6 +70,7 @@
         <nav class="app-nav" aria-label="App pages">
           <button class="nav-button active" id="monthlyNav" type="button">Monthly</button>
           <button class="nav-button" id="vacationNav" type="button">Vacation</button>
+          <button class="nav-button" id="investmentsNav" type="button">Investments</button>
         </nav>
       </div>
       <div class="user-strip">
@@ -159,10 +160,65 @@
           <div class="breakdown" id="vacationBreakdown"></div>
         </section>
       </section>
+
+      <section class="page" id="investmentsPage">
+        <form id="investmentsForm" class="input-panel">
+          <div class="section-title">
+            <div>
+              <h2>Index fund investments</h2>
+              <p class="helper">Track index funds and project future growth with compound interest.</p>
+            </div>
+          </div>
+          <div class="income-grid">
+            <div>
+              <label for="annualReturn">Annual return assumption</label>
+              <input id="annualReturn" type="number" min="0" step="0.1" placeholder="7.5">
+            </div>
+            <div>
+              <label for="projectionYears">Main projection years</label>
+              <input id="projectionYears" type="number" min="1" step="1" placeholder="10">
+            </div>
+          </div>
+          <div class="disclaimer">
+            These projections are estimates, not guarantees. The default 7.5% return is meant as a long-term planning assumption for broad funds that track the overall market, such as index funds. Individual company stocks can rise or fall for company-specific reasons, so their future growth cannot be predicted with the same simple compound-interest model.
+          </div>
+          <div class="divider"></div>
+          <div class="section-title">
+            <div>
+              <h2>Index funds</h2>
+              <p class="helper">Add each index fund, how much is already invested, and how much you plan to keep adding.</p>
+            </div>
+          </div>
+          <div id="investmentRows"></div>
+          <div class="actions">
+            <button type="button" class="secondary" id="addInvestmentButton">+ Add index fund</button>
+            <button type="button" class="secondary" id="refreshMarketButton">Refresh public prices</button>
+            <button type="button" class="secondary" id="clearInvestmentsButton">Clear investments</button>
+          </div>
+          <p class="helper assumption-note">Public prices are loaded from public market data by ticker symbol. No private API key is used, which keeps this project safe to publish on GitHub.</p>
+        </form>
+
+        <section class="results" aria-live="polite">
+          <div class="summary">
+            <h2>Projected investment value</h2>
+            <div class="hero-number">
+              <div class="spend-left" id="investmentFutureValue">$0.00</div>
+              <div class="status-pill" id="investmentStatus">7.5% assumed</div>
+            </div>
+            <div class="summary-grid investment-grid" id="investmentSummary"></div>
+          </div>
+          <div class="breakdown">
+            <h3>Public market info</h3>
+            <p class="helper" id="marketInfoStatus">Add ticker symbols like VOO, VTI, SPY, or QQQ, then refresh public prices.</p>
+            <div class="quote-grid" id="marketQuotes"></div>
+          </div>
+          <div class="breakdown" id="investmentBreakdown"></div>
+        </section>
+      </section>
     </main>
   </section>
 
-  <!-- script.js contains the login, saving, monthly budget, and vacation budget behavior. -->
+  <!-- script.js contains the login, saving, monthly budget, vacation budget, and investment projection behavior. -->
   <script src="script.js"></script>
 </body>
 </html>

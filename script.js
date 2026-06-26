@@ -1,6 +1,6 @@
 /*
   LoviesLedger app logic
-  This file controls account login, local saving, monthly budget history, and vacation trip budgets.
+  This file controls account login, local saving, monthly budget history, vacation trip budgets, and investment projections.
   Data is saved in the browser with localStorage, so it stays on this device/browser.
 */
 
@@ -8,7 +8,8 @@ const storageKeys = {
   users: "clearledger.users",
   session: "clearledger.session",
   budgets: "clearledger.budgets",
-  vacations: "clearledger.vacations"
+  vacations: "clearledger.vacations",
+  investments: "clearledger.investments"
 };
 
 const money = new Intl.NumberFormat("en-US", { style: "currency", currency: "USD" });
@@ -16,7 +17,8 @@ const money = new Intl.NumberFormat("en-US", { style: "currency", currency: "USD
 const monthlyCategories = [
   { key: "expenses", title: "Expenses", help: "Add every recurring expense and the monthly amount.", item: "Expense", placeholder: "Rent, groceries, phone", className: "costs", recurringDefault: true },
   { key: "purchases", title: "Purchases", help: "Add anything you spend money on, like clothes, shoes, or restaurants.", item: "Purchase", placeholder: "Clothes, shoes, restaurant", className: "purchases", recurringDefault: false },
-  { key: "gifts", title: "Gifts", help: "Add money spent on gifts for birthdays, holidays, thank-yous, and surprises.", item: "Gift", placeholder: "Birthday gift, holiday present", className: "gifts", recurringDefault: false }
+  { key: "gifts", title: "Gifts", help: "Add money spent on gifts for birthdays, holidays, thank-yous, and surprises.", item: "Gift", placeholder: "Birthday gift, holiday present", className: "gifts", recurringDefault: false },
+  { key: "monthlyInvestments", title: "Investments", help: "Add money invested this month, separate from savings.", item: "Investment", placeholder: "Index fund, brokerage, retirement", className: "monthly-investments", recurringDefault: false }
 ];
 
 const vacationCategories = [
@@ -26,6 +28,8 @@ const vacationCategories = [
   { key: "activities", title: "Activities", help: "Museums, attractions, tours, events, and entertainment.", item: "Activity", placeholder: "Museum, attraction, tour", className: "activities" },
   { key: "other", title: "Other", help: "Insurance, phone plans, visas, supplies, and extra trip costs.", item: "Other", placeholder: "Insurance, phone plan", className: "other-trip" }
 ];
+
+const projectionYearOptions = [5, 10, 20, 30];
 
 let mode = "login";
 let currentUser = "";
@@ -48,10 +52,13 @@ const avatar = document.querySelector("#avatar");
 const logoutButton = document.querySelector("#logoutButton");
 const monthlyNav = document.querySelector("#monthlyNav");
 const vacationNav = document.querySelector("#vacationNav");
+const investmentsNav = document.querySelector("#investmentsNav");
 const monthlyPage = document.querySelector("#monthlyPage");
 const vacationPage = document.querySelector("#vacationPage");
+const investmentsPage = document.querySelector("#investmentsPage");
 const budgetForm = document.querySelector("#budgetForm");
 const vacationForm = document.querySelector("#vacationForm");
+const investmentsForm = document.querySelector("#investmentsForm");
 const budgetMonth = document.querySelector("#budgetMonth");
 const nextMonthButton = document.querySelector("#nextMonthButton");
 const tripPicker = document.querySelector("#tripPicker");
@@ -59,12 +66,19 @@ const tripList = document.querySelector("#tripList");
 const newTripButton = document.querySelector("#newTripButton");
 const clearButton = document.querySelector("#clearButton");
 const clearVacationButton = document.querySelector("#clearVacationButton");
+const addInvestmentButton = document.querySelector("#addInvestmentButton");
+const refreshMarketButton = document.querySelector("#refreshMarketButton");
+const clearInvestmentsButton = document.querySelector("#clearInvestmentsButton");
 const monthlyInputs = document.querySelector("#monthlyInputs");
 const vacationInputs = document.querySelector("#vacationInputs");
+const investmentRows = document.querySelector("#investmentRows");
 const monthlySummary = document.querySelector("#monthlySummary");
 const vacationSummary = document.querySelector("#vacationSummary");
+const investmentSummary = document.querySelector("#investmentSummary");
+const marketQuotes = document.querySelector("#marketQuotes");
 const monthlyBreakdown = document.querySelector("#monthlyBreakdown");
 const vacationBreakdown = document.querySelector("#vacationBreakdown");
+const investmentBreakdown = document.querySelector("#investmentBreakdown");
 
 const fields = {
   monthlyIncome: document.querySelector("#monthlyIncome"),
@@ -72,14 +86,19 @@ const fields = {
   savePercent: document.querySelector("#savePercent"),
   charityPercent: document.querySelector("#charityPercent"),
   tripName: document.querySelector("#tripName"),
-  tripBudget: document.querySelector("#tripBudget")
+  tripBudget: document.querySelector("#tripBudget"),
+  annualReturn: document.querySelector("#annualReturn"),
+  projectionYears: document.querySelector("#projectionYears")
 };
 
 const results = {
   spendingLeft: document.querySelector("#spendingLeft"),
   statusPill: document.querySelector("#statusPill"),
   vacationLeft: document.querySelector("#vacationLeft"),
-  vacationStatus: document.querySelector("#vacationStatus")
+  vacationStatus: document.querySelector("#vacationStatus"),
+  investmentFutureValue: document.querySelector("#investmentFutureValue"),
+  investmentStatus: document.querySelector("#investmentStatus"),
+  marketInfoStatus: document.querySelector("#marketInfoStatus")
 };
 
 function readJson(key, fallback) {
@@ -93,6 +112,7 @@ function writeJson(key, value) {
 function getUsers() { return readJson(storageKeys.users, {}); }
 function getBudgets() { return readJson(storageKeys.budgets, {}); }
 function getVacations() { return readJson(storageKeys.vacations, {}); }
+function getInvestments() { return readJson(storageKeys.investments, {}); }
 
 function monthKey(date) {
   return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}`;
@@ -137,7 +157,8 @@ function emptyMonthlyBudget() {
     charityPercent: "",
     expenses: itemDefaults(true),
     purchases: itemDefaults(false),
-    gifts: itemDefaults(false)
+    gifts: itemDefaults(false),
+    monthlyInvestments: itemDefaults(false)
   };
 }
 
@@ -150,7 +171,8 @@ function normalizeMonthlyBudget(budget = emptyMonthlyBudget()) {
     charityPercent: budget.charityPercent ?? "",
     expenses: (budget.expenses?.length ? budget.expenses : empty.expenses).map((item) => normalizeItem(item, true)),
     purchases: (budget.purchases?.length ? budget.purchases : empty.purchases).map((item) => normalizeItem(item, false)),
-    gifts: (budget.gifts?.length ? budget.gifts : empty.gifts).map((item) => normalizeItem(item, false))
+    gifts: (budget.gifts?.length ? budget.gifts : empty.gifts).map((item) => normalizeItem(item, false)),
+    monthlyInvestments: (budget.monthlyInvestments?.length ? budget.monthlyInvestments : empty.monthlyInvestments).map((item) => normalizeItem(item, false))
   };
 }
 
@@ -168,7 +190,8 @@ function newMonthFromPrevious(previousBudget) {
     charityPercent: previous.charityPercent,
     expenses: recurringItems(previous.expenses).map((item) => ({ ...item, recurring: true })),
     purchases: recurringItems(previous.purchases),
-    gifts: recurringItems(previous.gifts)
+    gifts: recurringItems(previous.gifts),
+    monthlyInvestments: recurringItems(previous.monthlyInvestments)
   };
 }
 
@@ -264,6 +287,143 @@ function findTripByPickerValue(account, value) {
   return Object.values(account.trips).find((trip) => getTripTitle(trip) === value);
 }
 
+function emptyInvestmentPlan() {
+  return {
+    annualReturn: 7.5,
+    projectionYears: 10,
+    funds: [{ name: "", startingAmount: "", contributionAmount: "", contributionFrequency: "monthly" }]
+  };
+}
+
+function normalizeFund(fund = {}) {
+  return {
+    name: fund.name ?? "",
+    startingAmount: fund.startingAmount ?? fund.amount ?? "",
+    contributionAmount: fund.contributionAmount ?? "",
+    contributionFrequency: fund.contributionFrequency || "monthly"
+  };
+}
+
+function normalizeInvestmentPlan(plan = emptyInvestmentPlan()) {
+  const empty = emptyInvestmentPlan();
+  return {
+    annualReturn: Number(plan.annualReturn) || 7.5,
+    projectionYears: Number(plan.projectionYears) || 10,
+    funds: (plan.funds?.length ? plan.funds : empty.funds).map(normalizeFund)
+  };
+}
+
+function ensureInvestmentPlan(investments, email) {
+  investments[email] = normalizeInvestmentPlan(investments[email]);
+  return investments[email];
+}
+
+function contributionsPerYear(frequency) {
+  if (frequency === "weekly") return 52;
+  if (frequency === "biweekly") return 26;
+  if (frequency === "quarterly") return 4;
+  if (frequency === "yearly") return 1;
+  return 12;
+}
+
+function futureValue(startingAmount, contributionAmount, frequency, annualReturnPercent, years) {
+  const periodsPerYear = contributionsPerYear(frequency);
+  const totalPeriods = Math.max(0, Math.round(years * periodsPerYear));
+  const periodRate = (annualReturnPercent / 100) / periodsPerYear;
+  let value = startingAmount;
+
+  for (let period = 0; period < totalPeriods; period += 1) {
+    value = value * (1 + periodRate) + contributionAmount;
+  }
+
+  return value;
+}
+
+function uniqueTickers(funds) {
+  return [...new Set(
+    funds
+      .map((fund) => String(fund.name || "").trim().toUpperCase())
+      .filter(Boolean)
+      .map((ticker) => ticker.replace(/\s+/g, ""))
+  )];
+}
+
+function stooqSymbol(ticker) {
+  return ticker.includes(".") ? ticker.toLowerCase() : `${ticker.toLowerCase()}.us`;
+}
+
+function yahooSymbol(ticker) {
+  return ticker.includes(".") ? ticker.split(".")[0].toUpperCase() : ticker.toUpperCase();
+}
+
+function parseCsvLine(line) {
+  const values = [];
+  let current = "";
+  let inQuotes = false;
+
+  for (const character of line) {
+    if (character === '"') {
+      inQuotes = !inQuotes;
+    } else if (character === "," && !inQuotes) {
+      values.push(current);
+      current = "";
+    } else {
+      current += character;
+    }
+  }
+
+  values.push(current);
+  return values;
+}
+
+function parseStooqQuote(csvText) {
+  const [headerLine, valueLine] = csvText.trim().split(/\r?\n/);
+  if (!headerLine || !valueLine) return null;
+  const headers = parseCsvLine(headerLine);
+  const values = parseCsvLine(valueLine);
+  const quote = Object.fromEntries(headers.map((header, index) => [header.toLowerCase(), values[index]]));
+  if (!quote.close || quote.close === "N/D") return null;
+  return quote;
+}
+
+function quoteLinks(ticker) {
+  const yahooTicker = encodeURIComponent(yahooSymbol(ticker));
+  const stooqTicker = encodeURIComponent(stooqSymbol(ticker));
+  return `
+    <div class="quote-links">
+      <a href="https://finance.yahoo.com/quote/${yahooTicker}" target="_blank" rel="noopener">Yahoo Finance</a>
+      <a href="https://stooq.com/q/?s=${stooqTicker}" target="_blank" rel="noopener">Stooq</a>
+    </div>
+  `;
+}
+
+function renderQuoteCard(ticker, quote) {
+  if (!quote) {
+    return `
+      <div class="quote-card">
+        <h4>${escapeHtml(ticker)}</h4>
+        <p class="helper">Live quote was not available from the public source.</p>
+        ${quoteLinks(ticker)}
+      </div>
+    `;
+  }
+
+  return `
+    <div class="quote-card">
+      <h4>${escapeHtml(ticker)}</h4>
+      <dl>
+        <dt>Last price</dt><dd>${money.format(Number(quote.close) || 0)}</dd>
+        <dt>Open</dt><dd>${quote.open && quote.open !== "N/D" ? money.format(Number(quote.open) || 0) : "N/A"}</dd>
+        <dt>High</dt><dd>${quote.high && quote.high !== "N/D" ? money.format(Number(quote.high) || 0) : "N/A"}</dd>
+        <dt>Low</dt><dd>${quote.low && quote.low !== "N/D" ? money.format(Number(quote.low) || 0) : "N/A"}</dd>
+        <dt>Volume</dt><dd>${quote.volume && quote.volume !== "N/D" ? Number(quote.volume).toLocaleString() : "N/A"}</dd>
+        <dt>Date</dt><dd>${escapeHtml(quote.date || "N/A")}</dd>
+      </dl>
+      ${quoteLinks(ticker)}
+    </div>
+  `;
+}
+
 function setMode(nextMode) {
   mode = nextMode;
   const isLogin = mode === "login";
@@ -278,10 +438,13 @@ function setMode(nextMode) {
 
 function showPage(pageName) {
   const isVacation = pageName === "vacation";
-  monthlyPage.classList.toggle("active", !isVacation);
+  const isInvestments = pageName === "investments";
+  monthlyPage.classList.toggle("active", !isVacation && !isInvestments);
   vacationPage.classList.toggle("active", isVacation);
-  monthlyNav.classList.toggle("active", !isVacation);
+  investmentsPage.classList.toggle("active", isInvestments);
+  monthlyNav.classList.toggle("active", !isVacation && !isInvestments);
   vacationNav.classList.toggle("active", isVacation);
+  investmentsNav.classList.toggle("active", isInvestments);
 }
 
 function showApp(email) {
@@ -296,8 +459,10 @@ function showApp(email) {
   writeJson(storageKeys.budgets, budgets);
   loadMonthlyBudget(currentMonth);
   loadVacationBudget();
+  loadInvestmentPlan();
   calculateMonthly();
   calculateVacation();
+  calculateInvestments();
 }
 
 function showLogin() {
@@ -381,6 +546,49 @@ function makeRow(type, category, item = {}) {
   document.querySelector(`#${type}-${category.key}-rows`).append(row);
 }
 
+function makeInvestmentRow(fund = {}) {
+  const normalized = normalizeFund(fund);
+  const row = document.createElement("div");
+  row.className = "investment-row";
+  row.innerHTML = `
+    <div class="wide-field">
+      <label>Index fund</label>
+      <input class="fund-name" type="text" placeholder="VTI, VOO, FZROX" value="${escapeHtml(normalized.name)}">
+    </div>
+    <div>
+      <label>Starting</label>
+      <input class="fund-starting" type="number" min="0" step="0.01" placeholder="1000" value="${escapeHtml(normalized.startingAmount)}">
+    </div>
+    <div>
+      <label>Add</label>
+      <input class="fund-contribution" type="number" min="0" step="0.01" placeholder="100" value="${escapeHtml(normalized.contributionAmount)}">
+    </div>
+    <div class="wide-field">
+      <label>How often</label>
+      <select class="fund-frequency">
+        <option value="weekly" ${normalized.contributionFrequency === "weekly" ? "selected" : ""}>Weekly</option>
+        <option value="biweekly" ${normalized.contributionFrequency === "biweekly" ? "selected" : ""}>Every 2 weeks</option>
+        <option value="monthly" ${normalized.contributionFrequency === "monthly" ? "selected" : ""}>Monthly</option>
+        <option value="quarterly" ${normalized.contributionFrequency === "quarterly" ? "selected" : ""}>Quarterly</option>
+        <option value="yearly" ${normalized.contributionFrequency === "yearly" ? "selected" : ""}>Yearly</option>
+      </select>
+    </div>
+    <button class="icon-button" type="button" aria-label="Remove index fund">×</button>
+  `;
+  row.querySelector(".icon-button").addEventListener("click", () => {
+    row.remove();
+    saveInvestmentPlan();
+    calculateInvestments();
+  });
+  row.querySelectorAll("input, select").forEach((input) => {
+    ["input", "change"].forEach((eventName) => input.addEventListener(eventName, () => {
+      saveInvestmentPlan();
+      calculateInvestments();
+    }));
+  });
+  investmentRows.append(row);
+}
+
 function collectRows(type, category) {
   return [...document.querySelectorAll(`#${type}-${category.key}-rows .item-row`)].map((row) => ({
     name: row.querySelector(".item-name").value.trim(),
@@ -415,6 +623,19 @@ function collectVacationBudget() {
   return vacation;
 }
 
+function collectInvestmentPlan() {
+  return {
+    annualReturn: numberValue(fields.annualReturn),
+    projectionYears: Math.max(1, Number(fields.projectionYears.value) || 10),
+    funds: [...investmentRows.querySelectorAll(".investment-row")].map((row) => ({
+      name: row.querySelector(".fund-name").value.trim(),
+      startingAmount: numberValue(row.querySelector(".fund-starting")),
+      contributionAmount: numberValue(row.querySelector(".fund-contribution")),
+      contributionFrequency: row.querySelector(".fund-frequency").value
+    }))
+  };
+}
+
 function saveMonthlyBudget() {
   if (!currentUser) return;
   const budgets = getBudgets();
@@ -439,11 +660,20 @@ function saveVacationBudget() {
   renderTripPicker(account);
 }
 
+function saveInvestmentPlan() {
+  if (!currentUser) return;
+  const investments = getInvestments();
+  investments[currentUser] = collectInvestmentPlan();
+  writeJson(storageKeys.investments, investments);
+}
+
 function saveAll() {
   saveMonthlyBudget();
   saveVacationBudget();
+  saveInvestmentPlan();
   calculateMonthly();
   calculateVacation();
+  calculateInvestments();
 }
 
 function loadMonthlyBudget(month = currentMonth) {
@@ -486,6 +716,18 @@ function loadVacationBudget() {
   });
 }
 
+function loadInvestmentPlan() {
+  const investments = getInvestments();
+  const plan = ensureInvestmentPlan(investments, currentUser);
+  writeJson(storageKeys.investments, investments);
+
+  fields.annualReturn.value = plan.annualReturn || 7.5;
+  fields.projectionYears.value = plan.projectionYears || 10;
+  investmentRows.innerHTML = "";
+  const funds = plan.funds?.length ? plan.funds : emptyInvestmentPlan().funds;
+  funds.forEach(makeInvestmentRow);
+}
+
 function sum(items) {
   return items.reduce((total, item) => total + (Number(item.amount) || 0), 0);
 }
@@ -520,9 +762,10 @@ function calculateMonthly() {
   const totals = {
     expenses: sum(budget.expenses),
     purchases: sum(budget.purchases),
-    gifts: sum(budget.gifts)
+    gifts: sum(budget.gifts),
+    monthlyInvestments: sum(budget.monthlyInvestments)
   };
-  const spendingLeft = totalIncome - saveAmount - charityAmount - totals.expenses - totals.purchases - totals.gifts;
+  const spendingLeft = totalIncome - saveAmount - charityAmount - totals.expenses - totals.purchases - totals.gifts - totals.monthlyInvestments;
   results.spendingLeft.textContent = money.format(spendingLeft);
   results.statusPill.textContent = spendingLeft < 0 ? "Over budget" : "Balanced";
   results.statusPill.classList.toggle("warning", spendingLeft < 0);
@@ -553,6 +796,94 @@ function calculateVacation() {
   renderBreakdown(vacationBreakdown, vacationCategories, vacation, "trip costs");
 }
 
+function calculateInvestments() {
+  const plan = collectInvestmentPlan();
+  const annualReturn = plan.annualReturn || 7.5;
+  const mainYears = Math.max(1, plan.projectionYears || 10);
+  const funds = plan.funds.filter((fund) => fund.name || fund.startingAmount || fund.contributionAmount);
+  const currentInvested = sum(funds.map((fund) => ({ amount: fund.startingAmount })));
+  const projectedValue = funds.reduce((total, fund) => (
+    total + futureValue(fund.startingAmount, fund.contributionAmount, fund.contributionFrequency, annualReturn, mainYears)
+  ), 0);
+  const addedByUser = funds.reduce((total, fund) => (
+    total + fund.startingAmount + (fund.contributionAmount * contributionsPerYear(fund.contributionFrequency) * mainYears)
+  ), 0);
+  const estimatedGrowth = Math.max(0, projectedValue - addedByUser);
+
+  results.investmentFutureValue.textContent = money.format(projectedValue);
+  results.investmentStatus.textContent = `${annualReturn}% assumed`;
+  investmentSummary.innerHTML = `
+    <div class="metric invested"><span>Invested now</span><strong>${money.format(currentInvested)}</strong></div>
+    <div class="metric contributed"><span>You add by ${mainYears} years</span><strong>${money.format(Math.max(0, addedByUser - currentInvested))}</strong></div>
+    <div class="metric growth"><span>Estimated growth</span><strong>${money.format(estimatedGrowth)}</strong></div>
+  `;
+
+  const timelineYears = [...new Set([...projectionYearOptions, mainYears])].sort((a, b) => a - b);
+  const timeline = timelineYears.map((years) => {
+    const value = funds.reduce((total, fund) => (
+      total + futureValue(fund.startingAmount, fund.contributionAmount, fund.contributionFrequency, annualReturn, years)
+    ), 0);
+    return `
+      <div class="list-item">
+        <span>${years} years<small class="item-meta">At ${annualReturn}% annual return</small></span>
+        <strong>${money.format(value)}</strong>
+      </div>
+    `;
+  }).join("");
+
+  const fundList = funds.length ? funds.map((fund) => {
+    const value = futureValue(fund.startingAmount, fund.contributionAmount, fund.contributionFrequency, annualReturn, mainYears);
+    return `
+      <div class="list-item">
+        <span>${escapeHtml(fund.name || "Unnamed index fund")}<small class="item-meta">${money.format(fund.contributionAmount)} ${fund.contributionFrequency}</small></span>
+        <strong>${money.format(value)}</strong>
+      </div>
+    `;
+  }).join("") : '<div class="empty">Your index funds will appear here after you add them.</div>';
+
+  investmentBreakdown.innerHTML = `
+    <h3>Future timeline</h3>
+    <div class="list">${timeline || '<div class="empty">Add an index fund to see future estimates.</div>'}</div>
+    <h3>By index fund</h3>
+    <div class="list">${fundList}</div>
+  `;
+}
+
+async function refreshMarketInfo() {
+  const plan = collectInvestmentPlan();
+  const tickers = uniqueTickers(plan.funds);
+
+  if (!tickers.length) {
+    results.marketInfoStatus.textContent = "Add ticker symbols like VOO, VTI, SPY, or QQQ, then refresh public prices.";
+    marketQuotes.innerHTML = "";
+    return;
+  }
+
+  results.marketInfoStatus.textContent = "Loading public market prices...";
+  marketQuotes.innerHTML = tickers.map((ticker) => `
+    <div class="quote-card">
+      <h4>${escapeHtml(ticker)}</h4>
+      <p class="helper">Loading...</p>
+    </div>
+  `).join("");
+
+  try {
+    const cards = await Promise.all(tickers.map(async (ticker) => {
+      const url = `https://stooq.com/q/l/?s=${encodeURIComponent(stooqSymbol(ticker))}&f=sd2t2ohlcv&h&e=csv`;
+      const response = await fetch(url);
+      if (!response.ok) throw new Error(`Quote request failed for ${ticker}`);
+      const quote = parseStooqQuote(await response.text());
+      return renderQuoteCard(ticker, quote);
+    }));
+
+    marketQuotes.innerHTML = cards.join("");
+    results.marketInfoStatus.textContent = "Showing public quote data. Prices may be delayed and are not financial advice.";
+  } catch (error) {
+    marketQuotes.innerHTML = tickers.map((ticker) => renderQuoteCard(ticker, null)).join("");
+    results.marketInfoStatus.textContent = "The public quote request was blocked or unavailable. Use the public links below for current prices.";
+  }
+}
+
 function clearRows(type, categories) {
   categories.forEach((category) => {
     document.querySelector(`#${type}-${category.key}-rows`).innerHTML = "";
@@ -579,11 +910,21 @@ vacationInputs.addEventListener("click", (event) => {
   saveAll();
 });
 
+addInvestmentButton.addEventListener("click", () => {
+  makeInvestmentRow();
+  saveInvestmentPlan();
+  calculateInvestments();
+  investmentRows.lastElementChild?.querySelector(".fund-name").focus();
+});
+
+refreshMarketButton.addEventListener("click", refreshMarketInfo);
+
 loginTab.addEventListener("click", () => setMode("login"));
 signupTab.addEventListener("click", () => setMode("signup"));
 authForm.addEventListener("submit", handleAuth);
 monthlyNav.addEventListener("click", () => showPage("monthly"));
 vacationNav.addEventListener("click", () => showPage("vacation"));
+investmentsNav.addEventListener("click", () => showPage("investments"));
 
 logoutButton.addEventListener("click", () => {
   localStorage.removeItem(storageKeys.session);
@@ -652,8 +993,27 @@ clearVacationButton.addEventListener("click", () => {
   saveAll();
 });
 
+clearInvestmentsButton.addEventListener("click", () => {
+  fields.annualReturn.value = "7.5";
+  fields.projectionYears.value = "10";
+  investmentRows.innerHTML = "";
+  makeInvestmentRow();
+  marketQuotes.innerHTML = "";
+  results.marketInfoStatus.textContent = "Add ticker symbols like VOO, VTI, SPY, or QQQ, then refresh public prices.";
+  saveInvestmentPlan();
+  calculateInvestments();
+});
+
 budgetForm.addEventListener("input", saveAll);
 vacationForm.addEventListener("input", saveAll);
+investmentsForm.addEventListener("input", () => {
+  saveInvestmentPlan();
+  calculateInvestments();
+});
+investmentsForm.addEventListener("change", () => {
+  saveInvestmentPlan();
+  calculateInvestments();
+});
 
 const session = localStorage.getItem(storageKeys.session);
 if (session && getUsers()[session]) {

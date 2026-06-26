@@ -1,7 +1,7 @@
 /*
   LoviesLedger styles
   This file controls the look and layout of the finance tracker.
-  The HTML file describes the page structure, and script.js controls the login, saving, monthly budgets, and vacation budgets.
+  The HTML file describes the page structure, and script.js controls login, saving, monthly budgets, vacation budgets, and investment projections.
 */
 
 :root {
@@ -35,7 +35,7 @@ body {
     var(--paper);
 }
 
-button, input { font: inherit; }
+button, input, select { font: inherit; }
 button { border: 0; cursor: pointer; }
 
 .screen { min-height: 100vh; display: none; }
@@ -190,7 +190,7 @@ label {
   letter-spacing: 0.06em;
 }
 
-input {
+input, select {
   width: 100%;
   min-height: 48px;
   border: 1px solid var(--line);
@@ -201,7 +201,7 @@ input {
   outline: none;
 }
 
-input:focus {
+input:focus, select:focus {
   border-color: var(--mint-strong);
   box-shadow: 0 0 0 4px rgba(59, 143, 108, 0.12);
 }
@@ -313,6 +313,16 @@ main {
   margin-top: 10px;
 }
 
+.investment-row {
+  display: grid;
+  grid-template-columns: minmax(130px, 1fr) minmax(100px, 140px) minmax(100px, 140px) minmax(112px, 140px) 44px;
+  gap: 10px;
+  align-items: end;
+  margin-top: 10px;
+}
+
+.investment-row label { margin-top: 0; }
+
 .item-row label { margin-top: 0; }
 
 .recurring-field {
@@ -367,6 +377,7 @@ main {
 
 .summary-grid { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 12px; }
 .vacation-grid { grid-template-columns: repeat(5, minmax(0, 1fr)); }
+.investment-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); }
 
 .metric {
   min-height: 116px;
@@ -394,6 +405,10 @@ main {
 .costs, .hotels { background: var(--blue); }
 .purchases, .other-trip { background: var(--rose); }
 .gifts, .activities { background: var(--lav); }
+.monthly-investments { background: #d8f0ef; }
+.invested { background: var(--mint); }
+.contributed { background: var(--blue); }
+.growth { background: var(--gold); }
 
 .breakdown { padding: clamp(18px, 3vw, 28px); }
 .breakdown h3 { margin: 22px 0 4px; font-size: 20px; }
@@ -413,17 +428,76 @@ main {
 .list-item strong { color: var(--ink); }
 .empty { color: var(--muted); border: 1px dashed var(--line); border-radius: 8px; padding: 18px; line-height: 1.45; }
 
+.disclaimer {
+  border: 1px solid #e5d39a;
+  border-radius: 8px;
+  background: #fff8df;
+  color: #6f5718;
+  font-weight: 750;
+  line-height: 1.5;
+  margin: 18px 0 4px;
+  padding: 14px;
+}
+
+.quote-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.quote-card {
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: #fff;
+  padding: 14px;
+}
+
+.quote-card h4 {
+  margin: 0 0 10px;
+  font-size: 18px;
+}
+
+.quote-card dl {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 7px 12px;
+  margin: 0;
+  color: var(--muted);
+  font-weight: 750;
+}
+
+.quote-card dd {
+  margin: 0;
+  color: var(--ink);
+  font-weight: 850;
+}
+
+.quote-links {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-top: 12px;
+}
+
+.quote-links a {
+  color: var(--blue-strong);
+  font-weight: 850;
+}
+
 @media (max-width: 980px) {
   .login-screen.active, main { grid-template-columns: 1fr; }
   .page.active { display: block; }
   .auth-panel { border-left: 0; border-top: 1px solid rgba(255, 255, 255, 0.8); }
   .brand-panel { min-height: 48vh; }
-  .summary-grid, .vacation-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .summary-grid, .vacation-grid, .investment-grid, .quote-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .investment-row { grid-template-columns: repeat(2, minmax(0, 1fr)) 44px; }
 }
 
 @media (max-width: 680px) {
-  .mini-dashboard, .summary-grid, .vacation-grid, .income-grid, .month-tools { grid-template-columns: 1fr; }
+  .mini-dashboard, .summary-grid, .vacation-grid, .investment-grid, .quote-grid, .income-grid, .month-tools { grid-template-columns: 1fr; }
   .item-row { grid-template-columns: 1fr 104px 44px; }
+  .investment-row { grid-template-columns: 1fr 104px 44px; }
+  .investment-row .wide-field { grid-column: 1 / -1; }
   .recurring-field { grid-column: 1 / -1; order: 3; }
   .icon-button { order: 2; }
   .topbar { align-items: flex-start; flex-direction: column; }
