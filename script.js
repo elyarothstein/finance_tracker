@@ -20,7 +20,8 @@ const monthlyCategories = [
   { key: "groceries", title: "Groceries", help: "Add grocery spending here so the app can recognize food-at-home costs automatically.", item: "Grocery", placeholder: "Supermarket, grocery delivery", className: "grocery-costs", recurringDefault: false },
   { key: "gas", title: "Gas", help: "Add gas and fuel spending here so the app can track transportation fuel costs.", item: "Gas", placeholder: "Gas station, fuel", className: "gas-costs", recurringDefault: false },
   { key: "expenses", title: "Other necessary expenses", help: "Expenses are necessary purchases. Use this for essentials that are not rent, utilities, groceries, or gas.", item: "Expense", placeholder: "Insurance, medical, childcare", className: "costs", recurringDefault: true },
-  { key: "purchases", title: "Purchases", help: "Add anything you spend money on, like clothes, shoes, or restaurants.", item: "Purchase", placeholder: "Clothes, shoes, restaurant", className: "purchases", recurringDefault: false },
+  { key: "restaurants", title: "Restaurants", help: "Add restaurant, takeout, coffee shop, and food delivery spending here.", item: "Restaurant", placeholder: "Restaurant, takeout, coffee", className: "restaurant-costs", recurringDefault: false },
+  { key: "purchases", title: "Purchases", help: "Add general spending like clothes, shoes, electronics, and personal items.", item: "Purchase", placeholder: "Clothes, shoes, electronics", className: "purchases", recurringDefault: false },
   { key: "gifts", title: "Gifts", help: "Add money spent on gifts for birthdays, holidays, thank-yous, and surprises.", item: "Gift", placeholder: "Birthday gift, holiday present", className: "gifts", recurringDefault: false },
   { key: "monthlyInvestments", title: "Investments", help: "Add money invested this month, separate from savings.", item: "Investment", placeholder: "Index fund, brokerage, retirement", className: "monthly-investments", recurringDefault: false }
 ];
@@ -180,6 +181,7 @@ function emptyMonthlyBudget() {
     groceries: itemDefaults(false),
     gas: itemDefaults(false),
     expenses: itemDefaults(true),
+    restaurants: itemDefaults(false),
     purchases: itemDefaults(false),
     gifts: itemDefaults(false),
     monthlyInvestments: itemDefaults(false)
@@ -203,6 +205,7 @@ function normalizeMonthlyBudget(budget = emptyMonthlyBudget()) {
     groceries: (budget.groceries?.length ? budget.groceries : migratedItems("groceries").length ? migratedItems("groceries") : empty.groceries).map((item) => normalizeItem(item, false)),
     gas: (budget.gas?.length ? budget.gas : migratedItems("gas").length ? migratedItems("gas") : empty.gas).map((item) => normalizeItem(item, false)),
     expenses: (remainingExpenses.length ? remainingExpenses : empty.expenses).map((item) => normalizeItem(item, true)),
+    restaurants: (budget.restaurants?.length ? budget.restaurants : empty.restaurants).map((item) => normalizeItem(item, false)),
     purchases: (budget.purchases?.length ? budget.purchases : empty.purchases).map((item) => normalizeItem(item, false)),
     gifts: (budget.gifts?.length ? budget.gifts : empty.gifts).map((item) => normalizeItem(item, false)),
     monthlyInvestments: (budget.monthlyInvestments?.length ? budget.monthlyInvestments : empty.monthlyInvestments).map((item) => normalizeItem(item, false))
@@ -227,6 +230,7 @@ function newMonthFromPrevious(previousBudget) {
     groceries: recurringItems(previous.groceries),
     gas: recurringItems(previous.gas),
     expenses: recurringItems(previous.expenses).map((item) => ({ ...item, recurring: true })),
+    restaurants: recurringItems(previous.restaurants),
     purchases: recurringItems(previous.purchases),
     gifts: recurringItems(previous.gifts),
     monthlyInvestments: recurringItems(previous.monthlyInvestments)
@@ -807,10 +811,11 @@ function monthlyRollup(month, budget) {
   const groceries = sum(normalized.groceries);
   const gas = sum(normalized.gas);
   const expenses = sum(normalized.expenses);
+  const restaurants = sum(normalized.restaurants);
   const purchases = sum(normalized.purchases);
   const gifts = sum(normalized.gifts);
   const investments = sum(normalized.monthlyInvestments);
-  const totalSpending = rent + utilities + groceries + gas + expenses + purchases + gifts;
+  const totalSpending = rent + utilities + groceries + gas + expenses + restaurants + purchases + gifts;
   const moneyLeft = income - savings - charity - totalSpending - investments;
 
   return {
@@ -826,6 +831,7 @@ function monthlyRollup(month, budget) {
     groceries,
     gas,
     expenses,
+    restaurants,
     purchases,
     gifts,
     totalSpending,
@@ -846,6 +852,7 @@ function historyRows() {
     { key: "groceries", label: "Groceries" },
     { key: "gas", label: "Gas" },
     { key: "expenses", label: "Other necessary expenses" },
+    { key: "restaurants", label: "Restaurants" },
     { key: "purchases", label: "Purchases" },
     { key: "gifts", label: "Gifts" },
     { key: "totalSpending", label: "Total spending categories" },
@@ -906,11 +913,12 @@ function calculateMonthly() {
     groceries: sum(budget.groceries),
     gas: sum(budget.gas),
     expenses: sum(budget.expenses),
+    restaurants: sum(budget.restaurants),
     purchases: sum(budget.purchases),
     gifts: sum(budget.gifts),
     monthlyInvestments: sum(budget.monthlyInvestments)
   };
-  const spendingLeft = totalIncome - saveAmount - charityAmount - totals.rent - totals.utilities - totals.groceries - totals.gas - totals.expenses - totals.purchases - totals.gifts - totals.monthlyInvestments;
+  const spendingLeft = totalIncome - saveAmount - charityAmount - totals.rent - totals.utilities - totals.groceries - totals.gas - totals.expenses - totals.restaurants - totals.purchases - totals.gifts - totals.monthlyInvestments;
   results.spendingLeft.textContent = money.format(spendingLeft);
   results.statusPill.textContent = spendingLeft < 0 ? "Over budget" : "Balanced";
   results.statusPill.classList.toggle("warning", spendingLeft < 0);

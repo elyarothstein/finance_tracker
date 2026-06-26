@@ -418,6 +418,7 @@ main {
 .utility-costs { background: #e3ecff; }
 .grocery-costs { background: #fff1bf; }
 .gas-costs { background: #ffdeda; }
+.restaurant-costs { background: #ffe4c7; }
 .monthly-investments { background: #d8f0ef; }
 .invested { background: var(--mint); }
 .contributed { background: var(--blue); }
