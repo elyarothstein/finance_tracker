@@ -54,7 +54,7 @@
     </aside>
   </section>
 
-  <!-- Main app screen: shown after login, with Monthly and Vacation pages. -->
+  <!-- Main app screen: shown after login. The buttons in the top nav switch between the app pages. -->
   <section id="appScreen" class="screen" aria-label="Finance tracker">
     <header class="topbar">
       <div class="top-left">
@@ -67,11 +67,13 @@
           </svg>
           <span>LoviesLedger</span>
         </div>
+        <!-- Each button has an id so script.js can listen for clicks and show the matching page. -->
         <nav class="app-nav" aria-label="App pages">
           <button class="nav-button active" id="monthlyNav" type="button">Monthly</button>
           <button class="nav-button" id="vacationNav" type="button">Vacation</button>
           <button class="nav-button" id="investmentsNav" type="button">Investments</button>
           <button class="nav-button" id="summaryNav" type="button">Summary</button>
+          <button class="nav-button" id="creditCardsNav" type="button">Credit Cards</button>
         </nav>
       </div>
       <div class="user-strip">
@@ -85,6 +87,7 @@
     </header>
 
     <main>
+      <!-- Monthly page: the main budget planner for income, savings, charity, expenses, purchases, gifts, and monthly investments. -->
       <section class="page monthly-layout active" id="monthlyPage">
         <form id="budgetForm" class="input-panel">
           <div class="section-title">
@@ -116,10 +119,12 @@
             <div><label for="savePercent">Save percentage</label><input id="savePercent" type="number" min="0" max="100" step="0.1" placeholder="20"></div>
             <div><label for="charityPercent">Charity percentage</label><input id="charityPercent" type="number" min="0" max="100" step="0.1" placeholder="10"></div>
           </div>
+          <!-- script.js fills this empty div with all monthly category rows from the monthlyCategories array. -->
           <div id="monthlyInputs"></div>
           <div class="actions"><button type="button" class="secondary" id="clearButton">Clear plan</button></div>
         </form>
 
+        <!-- Results update automatically whenever the user types because script.js listens for form input. -->
         <section class="results" aria-live="polite">
           <div class="summary">
             <h2>Money left for spending</h2>
@@ -133,6 +138,7 @@
         </section>
       </section>
 
+      <!-- Vacation page: separate trip budgets so vacations do not get mixed into normal monthly spending. -->
       <section class="page" id="vacationPage">
         <form id="vacationForm" class="input-panel">
           <div class="section-title">
@@ -154,6 +160,7 @@
             <div><label for="tripMonth">Trip month</label><input id="tripMonth" type="month"></div>
             <div><label for="tripBudget">Trip budget</label><input id="tripBudget" type="number" min="0" step="0.01" placeholder="2500"></div>
           </div>
+          <!-- script.js fills this empty div with travel, hotels, food, activities, and other trip categories. -->
           <div id="vacationInputs"></div>
           <div class="actions"><button type="button" class="secondary" id="clearVacationButton">Clear vacation plan</button></div>
         </form>
@@ -171,6 +178,7 @@
         </section>
       </section>
 
+      <!-- Investments page: estimates future value for index funds using compound interest. -->
       <section class="page" id="investmentsPage">
         <form id="investmentsForm" class="input-panel">
           <div class="section-title">
@@ -199,6 +207,7 @@
               <p class="helper">Add each index fund, how much is already invested, and how much you plan to keep adding.</p>
             </div>
           </div>
+          <!-- Each investment row is created by script.js so users can add as many index funds as they need. -->
           <div id="investmentRows"></div>
           <div class="actions">
             <button type="button" class="secondary" id="addInvestmentButton">+ Add index fund</button>
@@ -226,6 +235,7 @@
         </section>
       </section>
 
+      <!-- Summary page: combines all saved months and vacations so users can look back over time. -->
       <section class="page" id="summaryPage">
         <div class="input-panel">
           <div class="section-title">
@@ -255,7 +265,72 @@
           </div>
         </section>
       </section>
+
+      <!-- Credit Cards page: reads spending patterns and merchant names, then suggests card types to compare. -->
+      <section class="page" id="creditCardsPage">
+        <div class="input-panel">
+          <div class="section-title">
+            <div>
+              <h2>Credit card guide</h2>
+              <p class="helper">Compare card types based on where the user actually spends money most often.</p>
+            </div>
+          </div>
+          <div class="disclaimer">
+            These are general comparison ideas, not financial advice. The app does not check credit score, annual fees, interest rates, welcome offers, or approval odds. Users should compare current card terms and avoid carrying a balance.
+          </div>
+          <div class="actions">
+            <button type="button" class="secondary" id="refreshCardsButton">Refresh card guide</button>
+          </div>
+        </div>
+
+        <section class="results" aria-live="polite">
+          <div class="summary">
+            <h2>Spending signals</h2>
+            <div class="summary-grid investment-grid" id="cardSignalSummary"></div>
+          </div>
+          <div class="breakdown">
+            <h3>Specific cards to research</h3>
+            <div class="recommendation-grid" id="cardRecommendations"></div>
+          </div>
+          <div class="breakdown">
+            <h3>Credit card library</h3>
+            <p class="helper">Fees, rewards, and benefits can change. Use the source links to confirm current terms before applying.</p>
+            <div class="card-library" id="cardLibrary"></div>
+          </div>
+          <div class="breakdown">
+            <h3>Top merchants and brands</h3>
+            <div id="merchantBreakdown"></div>
+          </div>
+        </section>
+      </section>
     </main>
+
+    <!-- Finance Helper: a no-hosting chatbot that runs fully in this browser with JavaScript. -->
+    <aside class="finance-helper" id="financeHelper" aria-label="Finance helper chat">
+      <button class="helper-toggle" id="helperToggle" type="button" aria-expanded="false">
+        Finance Helper
+      </button>
+      <section class="helper-panel" id="helperPanel" aria-live="polite">
+        <div class="helper-header">
+          <div>
+            <h2>LoviesLedger helper</h2>
+            <p>Ask about using this finance tracker.</p>
+          </div>
+          <button class="icon-button" id="helperClose" type="button" aria-label="Close finance helper">×</button>
+        </div>
+        <div class="helper-messages" id="helperMessages"></div>
+        <div class="helper-suggestions" aria-label="Suggested finance helper questions">
+          <button type="button" data-helper-question="How do I start a monthly budget?">Monthly budget</button>
+          <button type="button" data-helper-question="What counts as expenses?">Expenses</button>
+          <button type="button" data-helper-question="How do recurring purchases work?">Recurring</button>
+          <button type="button" data-helper-question="How does the investment page work?">Investments</button>
+        </div>
+        <form class="helper-form" id="helperForm">
+          <input id="helperInput" type="text" placeholder="Ask a finance question">
+          <button class="secondary" type="submit">Ask</button>
+        </form>
+      </section>
+    </aside>
   </section>
 
   <!-- script.js contains the login, saving, monthly budget, vacation budget, and investment projection behavior. -->

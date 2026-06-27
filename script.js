@@ -9,38 +9,43 @@ const storageKeys = {
   session: "clearledger.session",
   budgets: "clearledger.budgets",
   vacations: "clearledger.vacations",
-  investments: "clearledger.investments"
+  investments: "clearledger.investments",
+  helperChats: "clearledger.helperChats"
 };
 
 const money = new Intl.NumberFormat("en-US", { style: "currency", currency: "USD" });
 
+// These category arrays are the blueprint for the rows that appear on the Monthly and Vacation pages.
+// To add a new category later, add one object here and the app will render its inputs automatically.
 const monthlyCategories = [
   { key: "rent", title: "Rent", help: "Add rent payments here so the app can track housing costs automatically.", item: "Rent", placeholder: "Apartment rent", className: "rent-costs", recurringDefault: true },
   { key: "utilities", title: "Utilities", help: "Add necessary utility bills like electricity, water, internet, heat, and phone.", item: "Utility", placeholder: "Electric, internet, water", className: "utility-costs", recurringDefault: true },
-  { key: "groceries", title: "Groceries", help: "Add grocery spending here so the app can recognize food-at-home costs automatically.", item: "Grocery", placeholder: "Supermarket, grocery delivery", className: "grocery-costs", recurringDefault: false },
-  { key: "gas", title: "Gas", help: "Add gas and fuel spending here so the app can track transportation fuel costs.", item: "Gas", placeholder: "Gas station, fuel", className: "gas-costs", recurringDefault: false },
+  { key: "groceries", title: "Groceries", help: "Add grocery spending here so the app can recognize food-at-home costs automatically.", item: "Grocery", placeholder: "Supermarket, grocery delivery", className: "grocery-costs", recurringDefault: false, merchantLabel: "Store" },
+  { key: "gas", title: "Gas", help: "Add gas and fuel spending here so the app can track transportation fuel costs.", item: "Gas", placeholder: "Gas station, fuel", className: "gas-costs", recurringDefault: false, merchantLabel: "Gas station" },
   { key: "expenses", title: "Other necessary expenses", help: "Expenses are necessary purchases. Use this for essentials that are not rent, utilities, groceries, or gas.", item: "Expense", placeholder: "Insurance, medical, childcare", className: "costs", recurringDefault: true },
-  { key: "restaurants", title: "Restaurants", help: "Add restaurant, takeout, coffee shop, and food delivery spending here.", item: "Restaurant", placeholder: "Restaurant, takeout, coffee", className: "restaurant-costs", recurringDefault: false },
+  { key: "restaurants", title: "Restaurants", help: "Add restaurant, takeout, coffee shop, and food delivery spending here.", item: "Restaurant", placeholder: "Restaurant, takeout, coffee", className: "restaurant-costs", recurringDefault: false, merchantLabel: "Restaurant" },
   { key: "purchases", title: "Purchases", help: "Add general spending like clothes, shoes, electronics, and personal items.", item: "Purchase", placeholder: "Clothes, shoes, electronics", className: "purchases", recurringDefault: false },
   { key: "gifts", title: "Gifts", help: "Add money spent on gifts for birthdays, holidays, thank-yous, and surprises.", item: "Gift", placeholder: "Birthday gift, holiday present", className: "gifts", recurringDefault: false },
   { key: "monthlyInvestments", title: "Investments", help: "Add money invested this month, separate from savings.", item: "Investment", placeholder: "Index fund, brokerage, retirement", className: "monthly-investments", recurringDefault: false }
 ];
 
 const vacationCategories = [
-  { key: "travel", title: "Travel", help: "Planes, buses, taxis, rideshares, trains, parking, and fuel.", item: "Travel", placeholder: "Flight, taxi, bus", className: "travel" },
-  { key: "hotels", title: "Hotels", help: "Hotels, rentals, resort fees, deposits, and lodging taxes.", item: "Hotel", placeholder: "Hotel, Airbnb, resort fee", className: "hotels" },
-  { key: "food", title: "Food", help: "Restaurants, groceries, coffee, snacks, and trip meals.", item: "Food", placeholder: "Restaurant, groceries", className: "food" },
+  { key: "travel", title: "Travel", help: "Planes, buses, taxis, rideshares, trains, parking, and fuel.", item: "Travel", placeholder: "Flight, taxi, bus", className: "travel", merchantLabel: "Airline or brand" },
+  { key: "hotels", title: "Hotels", help: "Hotels, rentals, resort fees, deposits, and lodging taxes.", item: "Hotel", placeholder: "Hotel, Airbnb, resort fee", className: "hotels", merchantLabel: "Hotel brand" },
+  { key: "food", title: "Food", help: "Restaurants, groceries, coffee, snacks, and trip meals.", item: "Food", placeholder: "Restaurant, groceries", className: "food", merchantLabel: "Restaurant/store" },
   { key: "activities", title: "Activities", help: "Museums, attractions, tours, events, and entertainment.", item: "Activity", placeholder: "Museum, attraction, tour", className: "activities" },
   { key: "other", title: "Other", help: "Insurance, phone plans, visas, supplies, and extra trip costs.", item: "Other", placeholder: "Insurance, phone plan", className: "other-trip" }
 ];
 
 const projectionYearOptions = [5, 10, 20, 30];
 
+// These variables remember what the user is currently looking at.
 let mode = "login";
 let currentUser = "";
 let currentMonth = monthKey(new Date());
 let currentTripId = "";
 
+// These constants connect JavaScript to the matching ids in index.html.
 const loginScreen = document.querySelector("#loginScreen");
 const appScreen = document.querySelector("#appScreen");
 const authForm = document.querySelector("#authForm");
@@ -59,10 +64,12 @@ const monthlyNav = document.querySelector("#monthlyNav");
 const vacationNav = document.querySelector("#vacationNav");
 const investmentsNav = document.querySelector("#investmentsNav");
 const summaryNav = document.querySelector("#summaryNav");
+const creditCardsNav = document.querySelector("#creditCardsNav");
 const monthlyPage = document.querySelector("#monthlyPage");
 const vacationPage = document.querySelector("#vacationPage");
 const investmentsPage = document.querySelector("#investmentsPage");
 const summaryPage = document.querySelector("#summaryPage");
+const creditCardsPage = document.querySelector("#creditCardsPage");
 const budgetForm = document.querySelector("#budgetForm");
 const vacationForm = document.querySelector("#vacationForm");
 const investmentsForm = document.querySelector("#investmentsForm");
@@ -77,6 +84,7 @@ const addInvestmentButton = document.querySelector("#addInvestmentButton");
 const refreshMarketButton = document.querySelector("#refreshMarketButton");
 const clearInvestmentsButton = document.querySelector("#clearInvestmentsButton");
 const refreshSummaryButton = document.querySelector("#refreshSummaryButton");
+const refreshCardsButton = document.querySelector("#refreshCardsButton");
 const monthlyInputs = document.querySelector("#monthlyInputs");
 const vacationInputs = document.querySelector("#vacationInputs");
 const investmentRows = document.querySelector("#investmentRows");
@@ -84,12 +92,22 @@ const monthlySummary = document.querySelector("#monthlySummary");
 const vacationSummary = document.querySelector("#vacationSummary");
 const investmentSummary = document.querySelector("#investmentSummary");
 const historySummary = document.querySelector("#historySummary");
+const cardSignalSummary = document.querySelector("#cardSignalSummary");
 const marketQuotes = document.querySelector("#marketQuotes");
 const monthlyBreakdown = document.querySelector("#monthlyBreakdown");
 const vacationBreakdown = document.querySelector("#vacationBreakdown");
 const investmentBreakdown = document.querySelector("#investmentBreakdown");
 const historyTableWrap = document.querySelector("#historyTableWrap");
 const vacationHistoryWrap = document.querySelector("#vacationHistoryWrap");
+const cardRecommendations = document.querySelector("#cardRecommendations");
+const merchantBreakdown = document.querySelector("#merchantBreakdown");
+const cardLibrary = document.querySelector("#cardLibrary");
+const helperToggle = document.querySelector("#helperToggle");
+const helperPanel = document.querySelector("#helperPanel");
+const helperClose = document.querySelector("#helperClose");
+const helperMessages = document.querySelector("#helperMessages");
+const helperForm = document.querySelector("#helperForm");
+const helperInput = document.querySelector("#helperInput");
 
 const fields = {
   monthlyIncome: document.querySelector("#monthlyIncome"),
@@ -114,6 +132,7 @@ const results = {
   marketInfoStatus: document.querySelector("#marketInfoStatus")
 };
 
+// localStorage can only save strings, so these helpers turn objects into JSON and back again.
 function readJson(key, fallback) {
   try { return JSON.parse(localStorage.getItem(key)) ?? fallback; } catch { return fallback; }
 }
@@ -141,12 +160,14 @@ function numberValue(input) {
 }
 
 function monthlyIncomeFrom(amount, frequency = "monthly") {
+  // Weekly and biweekly income are converted into a monthly estimate for the budget math.
   if (frequency === "weekly") return amount * 52 / 12;
   if (frequency === "biweekly") return amount * 26 / 12;
   return amount;
 }
 
 function escapeHtml(value) {
+  // This keeps typed text safe when we place it back into the page with innerHTML.
   return String(value ?? "").replace(/[&<>"']/g, (character) => ({
     "&": "&amp;",
     "<": "&lt;",
@@ -161,11 +182,13 @@ function itemDefaults(recurring = false) {
 }
 
 function normalizeItem(item, recurringDefault = false) {
+  // Normalizing keeps older saved data working even after the app gains new fields.
   return {
     name: item?.name ?? "",
     amount: item?.amount ?? "",
     recurring: Boolean(item?.recurring ?? recurringDefault),
-    subcategory: item?.subcategory || "other"
+    subcategory: item?.subcategory || "other",
+    merchant: item?.merchant ?? ""
   };
 }
 
@@ -190,6 +213,8 @@ function emptyMonthlyBudget() {
 
 function normalizeMonthlyBudget(budget = emptyMonthlyBudget()) {
   const empty = emptyMonthlyBudget();
+  // Older versions stored rent, utilities, groceries, and gas inside "expenses".
+  // This migration moves those old rows into the newer separate categories.
   const oldExpenses = budget.expenses?.length ? budget.expenses.map((item) => normalizeItem(item, true)) : [];
   const promotedSubcategories = ["rent", "utilities", "groceries", "gas"];
   const migratedItems = (subcategory) => oldExpenses.filter((item) => item.subcategory === subcategory);
@@ -219,6 +244,7 @@ function recurringItems(items) {
 
 function newMonthFromPrevious(previousBudget) {
   const previous = normalizeMonthlyBudget(previousBudget);
+  // When a new month starts, only rows marked Monthly copy forward automatically.
   return {
     monthlyIncome: previous.monthlyIncome,
     incomeFrequency: previous.incomeFrequency || "monthly",
@@ -238,6 +264,7 @@ function newMonthFromPrevious(previousBudget) {
 }
 
 function ensureUserBudget(budgets, email) {
+  // Every user has their own saved month history inside the budgets object.
   const existing = budgets[email];
   if (existing?.months) {
     existing.activeMonth ||= currentMonth;
@@ -257,6 +284,7 @@ function latestMonthBefore(months, targetMonth) {
 
 function getMonthBudget(userBudget, month) {
   if (!userBudget.months[month]) {
+    // If the user opens a month for the first time, start it from the closest previous month.
     const previousMonth = latestMonthBefore(userBudget.months, month);
     userBudget.months[month] = previousMonth ? newMonthFromPrevious(userBudget.months[previousMonth]) : emptyMonthlyBudget();
   }
@@ -299,6 +327,7 @@ function normalizeVacationBudget(vacation = emptyVacationBudget()) {
 }
 
 function ensureVacationAccount(vacations, email) {
+  // Vacation data is saved as many trips, with one active trip selected at a time.
   const existing = vacations[email];
   if (existing?.trips) {
     if (!existing.activeTripId || !existing.trips[existing.activeTripId]) {
@@ -372,6 +401,7 @@ function contributionsPerYear(frequency) {
 }
 
 function futureValue(startingAmount, contributionAmount, frequency, annualReturnPercent, years) {
+  // Compound interest: every period grows the current value, then adds the user's contribution.
   const periodsPerYear = contributionsPerYear(frequency);
   const totalPeriods = Math.max(0, Math.round(years * periodsPerYear));
   const periodRate = (annualReturnPercent / 100) / periodsPerYear;
@@ -422,6 +452,7 @@ function parseCsvLine(line) {
 }
 
 function parseStooqQuote(csvText) {
+  // Stooq returns public quote data as CSV, so this turns one CSV row into a JavaScript object.
   const [headerLine, valueLine] = csvText.trim().split(/\r?\n/);
   if (!headerLine || !valueLine) return null;
   const headers = parseCsvLine(headerLine);
@@ -470,6 +501,7 @@ function renderQuoteCard(ticker, quote) {
 }
 
 function setMode(nextMode) {
+  // Switches the login form between "Log in" and "Create account".
   mode = nextMode;
   const isLogin = mode === "login";
   loginTab.classList.toggle("active", isLogin);
@@ -482,24 +514,32 @@ function setMode(nextMode) {
 }
 
 function showPage(pageName) {
+  // Only one app page should be active at a time.
   const isVacation = pageName === "vacation";
   const isInvestments = pageName === "investments";
   const isSummary = pageName === "summary";
-  monthlyPage.classList.toggle("active", !isVacation && !isInvestments && !isSummary);
+  const isCreditCards = pageName === "creditCards";
+  monthlyPage.classList.toggle("active", !isVacation && !isInvestments && !isSummary && !isCreditCards);
   vacationPage.classList.toggle("active", isVacation);
   investmentsPage.classList.toggle("active", isInvestments);
   summaryPage.classList.toggle("active", isSummary);
-  monthlyNav.classList.toggle("active", !isVacation && !isInvestments && !isSummary);
+  creditCardsPage.classList.toggle("active", isCreditCards);
+  monthlyNav.classList.toggle("active", !isVacation && !isInvestments && !isSummary && !isCreditCards);
   vacationNav.classList.toggle("active", isVacation);
   investmentsNav.classList.toggle("active", isInvestments);
   summaryNav.classList.toggle("active", isSummary);
+  creditCardsNav.classList.toggle("active", isCreditCards);
 
   if (isSummary) {
     renderHistorySummary();
   }
+  if (isCreditCards) {
+    renderCreditCardGuide();
+  }
 }
 
 function showApp(email) {
+  // After login, load everything saved for this account and calculate the visible totals.
   currentUser = email;
   loginScreen.classList.remove("active");
   appScreen.classList.add("active");
@@ -516,6 +556,7 @@ function showApp(email) {
   calculateVacation();
   calculateInvestments();
   renderHistorySummary();
+  renderCreditCardGuide();
 }
 
 function showLogin() {
@@ -527,6 +568,7 @@ function showLogin() {
 }
 
 function handleAuth(event) {
+  // This is a simple local demo login. Accounts are saved only in this browser.
   event.preventDefault();
   const email = emailInput.value.trim().toLowerCase();
   const password = passwordInput.value;
@@ -556,6 +598,7 @@ function handleAuth(event) {
 }
 
 function renderCategoryInputs(container, categories, type) {
+  // Builds the category sections from monthlyCategories or vacationCategories.
   container.innerHTML = categories.map((category) => `
     <div class="divider"></div>
     <div class="section-title">
@@ -572,15 +615,23 @@ function renderCategoryInputs(container, categories, type) {
 }
 
 function makeRow(type, category, item = {}) {
+  // Creates one editable row for categories like groceries, gas, gifts, travel, or hotels.
   const row = document.createElement("div");
   const recurringDefault = type === "monthly" ? category.recurringDefault : false;
   const normalized = normalizeItem(item, recurringDefault);
-  row.className = "item-row";
+  const merchantField = category.merchantLabel ? `
+    <div>
+      <label>${category.merchantLabel}</label>
+      <input class="item-merchant" type="text" placeholder="Costco, Target, Southwest" value="${escapeHtml(normalized.merchant)}">
+    </div>
+  ` : "";
+  row.className = category.merchantLabel ? "item-row merchant-row" : "item-row";
   row.innerHTML = `
     <div>
       <label>${category.item} name</label>
       <input class="item-name" type="text" placeholder="${escapeHtml(category.placeholder)}" value="${escapeHtml(normalized.name)}">
     </div>
+    ${merchantField}
     <div>
       <label>Amount</label>
       <input class="item-amount" type="number" min="0" step="0.01" placeholder="0" value="${escapeHtml(normalized.amount)}">
@@ -602,6 +653,7 @@ function makeRow(type, category, item = {}) {
 }
 
 function makeInvestmentRow(fund = {}) {
+  // Creates one editable index-fund row on the Investments page.
   const normalized = normalizeFund(fund);
   const row = document.createElement("div");
   row.className = "investment-row";
@@ -645,8 +697,10 @@ function makeInvestmentRow(fund = {}) {
 }
 
 function collectRows(type, category) {
+  // Reads all row inputs from the page and turns them into saveable objects.
   return [...document.querySelectorAll(`#${type}-${category.key}-rows .item-row`)].map((row) => ({
     name: row.querySelector(".item-name").value.trim(),
+    merchant: row.querySelector(".item-merchant")?.value.trim() || "",
     amount: numberValue(row.querySelector(".item-amount")),
     recurring: row.querySelector(".item-recurring").checked
   }));
@@ -725,6 +779,7 @@ function saveInvestmentPlan() {
 }
 
 function saveAll() {
+  // Most typing in the app comes here: save the data, then refresh the totals.
   saveMonthlyBudget();
   saveVacationBudget();
   saveInvestmentPlan();
@@ -734,6 +789,7 @@ function saveAll() {
 }
 
 function loadMonthlyBudget(month = currentMonth) {
+  // Puts saved monthly data back into the form fields and category rows.
   const budgets = getBudgets();
   const userBudget = ensureUserBudget(budgets, currentUser);
   currentMonth = month || userBudget.activeMonth || currentMonth;
@@ -756,6 +812,7 @@ function loadMonthlyBudget(month = currentMonth) {
 }
 
 function loadVacationBudget() {
+  // Puts the selected trip back into the vacation form.
   const vacations = getVacations();
   const account = ensureVacationAccount(vacations, currentUser);
   currentTripId = account.activeTripId;
@@ -776,6 +833,7 @@ function loadVacationBudget() {
 }
 
 function loadInvestmentPlan() {
+  // Puts the saved investment plan back into the Investments page.
   const investments = getInvestments();
   const plan = ensureInvestmentPlan(investments, currentUser);
   writeJson(storageKeys.investments, investments);
@@ -800,6 +858,7 @@ function monthLabel(month) {
 }
 
 function monthlyRollup(month, budget) {
+  // Used by the Summary page to turn one saved month into category totals.
   const normalized = normalizeMonthlyBudget(budget);
   const monthlyIncome = monthlyIncomeFrom(Number(normalized.monthlyIncome) || 0, normalized.incomeFrequency);
   const extraIncome = Number(normalized.extraIncome) || 0;
@@ -886,11 +945,12 @@ function renderSummary(container, categories, totals) {
 }
 
 function renderBreakdown(container, categories, budget, emptyWord) {
+  // Shows a readable list of the items entered in each category.
   container.innerHTML = categories.map((category) => {
     const filled = (budget[category.key] || []).filter((item) => item.name || item.amount);
     const list = filled.length ? filled.map((item) => `
       <div class="list-item">
-        <span>${escapeHtml(item.name || `Unnamed ${category.item.toLowerCase()}`)}<small class="item-meta">${itemMetaText(category, item)}</small></span>
+        <span>${escapeHtml(item.name || `Unnamed ${category.item.toLowerCase()}`)}<small class="item-meta">${escapeHtml(itemMetaText(category, item))}</small></span>
         <strong>${money.format(Number(item.amount) || 0)}</strong>
       </div>
     `).join("") : `<div class="empty">Your ${emptyWord} for ${category.title.toLowerCase()} will appear here.</div>`;
@@ -899,10 +959,12 @@ function renderBreakdown(container, categories, budget, emptyWord) {
 }
 
 function itemMetaText(category, item) {
-  return item.recurring ? "Monthly" : "One-time";
+  const timing = item.recurring ? "Monthly" : "One-time";
+  return item.merchant ? `${timing} · ${item.merchant}` : timing;
 }
 
 function calculateMonthly() {
+  // Main monthly budget math: income minus savings, charity, categories, and investments.
   const budget = collectMonthlyBudget();
   const totalIncome = monthlyIncomeFrom(budget.monthlyIncome, budget.incomeFrequency) + budget.extraIncome;
   const saveAmount = totalIncome * (budget.savePercent / 100);
@@ -922,10 +984,6 @@ function calculateMonthly() {
   results.spendingLeft.textContent = money.format(spendingLeft);
   results.statusPill.textContent = spendingLeft < 0 ? "Over budget" : "Balanced";
   results.statusPill.classList.toggle("warning", spendingLeft < 0);
-  monthlySummary.innerHTML = `
-    <div class="metric save"><span>Need to save</span><strong>${money.format(saveAmount)}</strong></div>
-    <div class="metric give"><span>Charity</span><strong>${money.format(charityAmount)}</strong></div>
-  `;
   renderSummary(monthlySummary, monthlyCategories, totals);
   monthlySummary.insertAdjacentHTML("afterbegin", `
     <div class="metric save"><span>Need to save</span><strong>${money.format(saveAmount)}</strong></div>
@@ -935,6 +993,7 @@ function calculateMonthly() {
 }
 
 function calculateVacation() {
+  // Adds up the selected trip and shows whether the trip is within its budget.
   const vacation = collectVacationBudget();
   const totals = {};
   vacationCategories.forEach((category) => {
@@ -950,6 +1009,7 @@ function calculateVacation() {
 }
 
 function calculateInvestments() {
+  // Estimates future investment value using the user's contribution schedule and return assumption.
   const plan = collectInvestmentPlan();
   const annualReturn = plan.annualReturn || 7.5;
   const mainYears = Math.max(1, plan.projectionYears || 10);
@@ -1002,7 +1062,682 @@ function calculateInvestments() {
   `;
 }
 
+function addCardSignal(signals, category, item) {
+  // A "signal" is spending data the Credit Cards page can use for recommendations.
+  const amount = Number(item.amount) || 0;
+  if (!amount) return;
+
+  signals.categoryTotals[category] = (signals.categoryTotals[category] || 0) + amount;
+
+  const merchant = String(item.merchant || item.name || "").trim();
+  if (!merchant) return;
+
+  const merchantKey = merchant.toLowerCase();
+  signals.merchantTotals[merchantKey] ||= { name: merchant, total: 0 };
+  signals.merchantTotals[merchantKey].total += amount;
+  signals.categoryMerchants[category] ||= {};
+  signals.categoryMerchants[category][merchantKey] ||= { name: merchant, total: 0 };
+  signals.categoryMerchants[category][merchantKey].total += amount;
+}
+
+function collectCardSignals() {
+  // Looks across saved months and trips for categories that matter for card rewards.
+  const signals = {
+    categoryTotals: {},
+    merchantTotals: {},
+    categoryMerchants: {}
+  };
+
+  const monthlyCardCategories = [
+    { key: "groceries", label: "Groceries" },
+    { key: "gas", label: "Gas" },
+    { key: "restaurants", label: "Restaurants" }
+  ];
+  const vacationCardCategories = [
+    { key: "travel", label: "Airlines and travel" },
+    { key: "hotels", label: "Hotels" },
+    { key: "food", label: "Vacation food" }
+  ];
+
+  const budgets = getBudgets();
+  const savedMonths = budgets[currentUser]?.months || {};
+  Object.values(savedMonths).map(normalizeMonthlyBudget).forEach((budget) => {
+    monthlyCardCategories.forEach((category) => {
+      budget[category.key].forEach((item) => addCardSignal(signals, category.label, item));
+    });
+  });
+
+  const vacations = getVacations();
+  const savedTrips = vacations[currentUser]?.trips || {};
+  Object.values(savedTrips).map(normalizeVacationBudget).forEach((trip) => {
+    vacationCardCategories.forEach((category) => {
+      trip[category.key].forEach((item) => addCardSignal(signals, category.label, item));
+    });
+  });
+
+  return signals;
+}
+
+function sortedTotals(totals) {
+  return Object.entries(totals).sort(([, a], [, b]) => b - a);
+}
+
+function sortedMerchantList(merchantMap = {}) {
+  return Object.values(merchantMap).sort((a, b) => b.total - a.total);
+}
+
+function topMerchant(signals, category) {
+  return sortedMerchantList(signals.categoryMerchants[category])[0];
+}
+
+function addRecommendation(recommendations, title, body, reason) {
+  // Prevents the same recommendation from being shown twice.
+  if (recommendations.some((recommendation) => recommendation.title === title)) return;
+  recommendations.push({ title, body, reason });
+}
+
+function merchantIncludes(merchant, words) {
+  // Checks whether a typed store/brand name contains any brand names from a list.
+  const name = String(merchant?.name || "").toLowerCase();
+  return words.some((word) => name.includes(word));
+}
+
+const cardBrandGroups = {
+  // These lists are not card offers. They only help the app recognize common store, airline, and hotel names.
+  warehouse: [
+    "costco", "sam's club", "sams club", "sam's", "sams", "bj's", "bjs", "bj’s", "restaurant depot"
+  ],
+  bigBox: [
+    "target", "walmart", "wal-mart", "meijer", "fred meyer", "super target", "supercenter"
+  ],
+  grocery: [
+    "aldi", "albertsons", "bashas", "big y", "bi-lo", "bravo", "brookshire", "c-town", "central market",
+    "cub", "dierbergs", "dillons", "fairway", "fareway", "food 4 less", "food city", "food lion",
+    "foodtown", "fred meyer", "fresh market", "fry's", "frys", "giant", "giant eagle", "giant food",
+    "hannaford", "harris teeter", "heb", "h-e-b", "hy-vee", "ingles", "jewel-osco", "king soopers",
+    "kroger", "lidl", "lowes foods", "market basket", "martin's", "martins", "met food", "piggly wiggly",
+    "price chopper", "publix", "raley's", "raleys", "randalls", "ralphs", "safeway", "save a lot",
+    "schnucks", "shoprite", "smart & final", "smart and final", "sprouts", "stater bros", "stop & shop",
+    "supervalu", "tom thumb", "tops", "trader joe", "trader joe's", "vons", "wegmans", "weiss", "whole foods",
+    "winn-dixie", "winco"
+  ],
+  gas: [
+    "76", "7-eleven", "7 eleven", "ampm", "arco", "bp", "casey's", "caseys", "chevron", "citgo", "circle k",
+    "conoco", "costco", "cumberland farms", "exxon", "flying j", "getgo", "gulf", "hess", "kum & go",
+    "kum and go", "kwik trip", "love's", "loves", "marathon", "mobil", "murphy", "pilot", "phillips 66",
+    "quiktrip", "quicktrip", "racetrac", "raceway", "royal farms", "sheetz", "shell", "sinclair", "speedway",
+    "sunoco", "texaco", "thorntons", "valero", "wawa"
+  ],
+  airline: [
+    "aer lingus", "aero mexico", "aeromexico", "air canada", "air france", "air india", "air new zealand",
+    "alaska", "allegiant", "american airlines", "american air", "ana", "avianca", "british airways",
+    "cathay", "delta", "emirates", "etihad", "frontier", "hawaiian", "iberia", "jetblue", "klm",
+    "korean air", "latam", "lufthansa", "qantas", "qatar", "sas", "singapore airlines", "southwest",
+    "spirit", "sun country", "swiss", "tap air", "turkish airlines", "united", "virgin atlantic",
+    "virgin australia", "westjet"
+  ],
+  hotel: [
+    "accor", "airbnb", "aloft", "best western", "cambria", "canopy", "candlewood", "choice hotels",
+    "comfort inn", "comfort suites", "conrad", "courtyard", "crowne plaza", "days inn", "doubletree",
+    "drury", "embassy suites", "extended stay", "fairfield", "four seasons", "hampton", "hilton",
+    "holiday inn", "home2", "homewood", "hotel indigo", "hyatt", "hyatt house", "hyatt place", "ihg",
+    "intercontinental", "jw marriott", "la quinta", "marriott", "motel 6", "omni", "park hyatt",
+    "quality inn", "radisson", "ramada", "red roof", "renaissance", "residence inn", "ritz-carlton",
+    "sheraton", "sonesta", "springhill", "st. regis", "st regis", "staybridge", "super 8", "towneplace",
+    "travelodge", "truhotel", "tru by hilton", "waldorf", "westin", "wingate", "world of hyatt",
+    "wyndham"
+  ]
+};
+
+const creditCardLibrary = [
+  {
+    name: "Chase Sapphire Preferred Card",
+    issuer: "Chase",
+    annualFee: "$95",
+    rewardTags: ["travel", "restaurants", "gas", "grocery delivery"],
+    brandTags: [],
+    rewards: ["5x points on travel purchased through Chase Travel", "3x points on dining, gas stations, EV charging, select streaming, and online grocery purchases", "2x points on other travel", "1x point on other purchases"],
+    benefits: ["Points can be used through Chase Ultimate Rewards", "Travel and purchase protections may apply", "No foreign transaction fees"],
+    important: "Good to compare if travel and restaurants are major spending categories.",
+    source: "https://creditcards.chase.com/rewards-credit-cards/sapphire/preferred"
+  },
+  {
+    name: "Chase Freedom Unlimited",
+    issuer: "Chase",
+    annualFee: "$0",
+    rewardTags: ["flat cash back", "restaurants", "drugstores", "travel"],
+    brandTags: [],
+    rewards: ["5% cash back on travel purchased through Chase Travel", "3% cash back on dining and drugstore purchases", "1.5% cash back on other purchases"],
+    benefits: ["Simple everyday rewards", "Can pair with some Chase travel cards for more redemption options"],
+    important: "Useful to compare when spending is spread across many categories.",
+    source: "https://creditcards.chase.com/cash-back-credit-cards/freedom/unlimited"
+  },
+  {
+    name: "Chase Freedom Flex",
+    issuer: "Chase",
+    annualFee: "$0",
+    rewardTags: ["rotating categories", "restaurants", "drugstores", "travel"],
+    brandTags: [],
+    rewards: ["5% cash back in rotating quarterly categories after activation, up to the quarterly limit", "5% cash back on travel purchased through Chase Travel", "3% cash back on dining and drugstores", "1% cash back on other purchases"],
+    benefits: ["Strong when the quarterly categories match the user's spending", "No annual fee"],
+    important: "Best for users willing to track changing bonus categories.",
+    source: "https://creditcards.chase.com/cash-back-credit-cards/freedom/flex"
+  },
+  {
+    name: "American Express Gold Card",
+    issuer: "American Express",
+    annualFee: "$325",
+    rewardTags: ["restaurants", "groceries", "flights"],
+    brandTags: [],
+    rewards: ["4x Membership Rewards points at restaurants", "4x points at U.S. supermarkets up to the annual cap, then 1x", "3x points on flights booked with airlines or Amex Travel", "1x point on other purchases"],
+    benefits: ["Dining and Uber credits may offset part of the annual fee if used", "Strong food-focused rewards"],
+    important: "Compare only if restaurant and U.S. supermarket spending is high enough to justify the annual fee.",
+    source: "https://www.americanexpress.com/us/credit-cards/card/gold-card/"
+  },
+  {
+    name: "Blue Cash Preferred Card from American Express",
+    issuer: "American Express",
+    annualFee: "$95",
+    rewardTags: ["groceries", "gas", "transit", "streaming"],
+    brandTags: [],
+    rewards: ["6% cash back at U.S. supermarkets up to the annual cap, then 1%", "6% cash back on select U.S. streaming subscriptions", "3% cash back at U.S. gas stations and on transit", "1% cash back on other purchases"],
+    benefits: ["High supermarket rewards for families or frequent grocery shoppers", "Statement credit style cash back"],
+    important: "Check the grocery cap and whether your stores count as U.S. supermarkets.",
+    source: "https://www.americanexpress.com/us/credit-cards/card/blue-cash-preferred/"
+  },
+  {
+    name: "Citi Double Cash Card",
+    issuer: "Citi",
+    annualFee: "$0",
+    rewardTags: ["flat cash back"],
+    brandTags: [],
+    rewards: ["Earns up to 2% cash back: 1% when you buy and 1% as you pay"],
+    benefits: ["Simple rewards without category tracking", "Good baseline card to compare against category cards"],
+    important: "A strong comparison card when spending is mixed across many places.",
+    source: "https://www.citi.com/credit-cards/citi-double-cash-credit-card"
+  },
+  {
+    name: "Wells Fargo Active Cash Card",
+    issuer: "Wells Fargo",
+    annualFee: "$0",
+    rewardTags: ["flat cash back"],
+    brandTags: [],
+    rewards: ["Unlimited 2% cash rewards on purchases"],
+    benefits: ["Simple flat rewards", "Cell phone protection may apply when paying the phone bill with the card"],
+    important: "Useful to compare as a no-annual-fee everyday spending card.",
+    source: "https://creditcards.wellsfargo.com/active-cash-credit-card/"
+  },
+  {
+    name: "Capital One Savor Cash Rewards Credit Card",
+    issuer: "Capital One",
+    annualFee: "$0",
+    rewardTags: ["restaurants", "groceries", "entertainment", "streaming"],
+    brandTags: [],
+    rewards: ["3% cash back on dining, entertainment, popular streaming services, and grocery stores", "1% cash back on other purchases"],
+    benefits: ["No annual fee", "Good for dining and entertainment-heavy spending"],
+    important: "Grocery rewards usually exclude superstores like Walmart and Target, so check your main stores.",
+    source: "https://www.capitalone.com/credit-cards/savor/"
+  },
+  {
+    name: "Capital One Venture Rewards Credit Card",
+    issuer: "Capital One",
+    annualFee: "$95",
+    rewardTags: ["travel", "flat miles"],
+    brandTags: [],
+    rewards: ["2x miles on every purchase", "5x miles on hotels, vacation rentals, and rental cars booked through Capital One Travel"],
+    benefits: ["Global Entry or TSA PreCheck credit may apply", "No foreign transaction fees"],
+    important: "Good to compare when travel matters but spending is spread across many categories.",
+    source: "https://www.capitalone.com/credit-cards/venture/"
+  },
+  {
+    name: "Discover it Cash Back",
+    issuer: "Discover",
+    annualFee: "$0",
+    rewardTags: ["rotating categories"],
+    brandTags: [],
+    rewards: ["5% cash back in rotating categories after activation, up to the quarterly limit", "1% cash back on other purchases"],
+    benefits: ["Discover Cashback Match for new cardmembers may apply", "No annual fee"],
+    important: "Best for users willing to activate and track quarterly categories.",
+    source: "https://www.discover.com/credit-cards/cash-back/it-card.html"
+  },
+  {
+    name: "Costco Anywhere Visa Card by Citi",
+    issuer: "Citi",
+    annualFee: "$0 with paid Costco membership",
+    rewardTags: ["gas", "travel", "restaurants", "warehouse"],
+    brandTags: ["costco"],
+    rewards: ["4% cash back on eligible gas and EV charging up to the annual cap, then 1%", "3% cash back on restaurants and eligible travel", "2% cash back at Costco and Costco.com", "1% cash back on other purchases"],
+    benefits: ["Designed for Costco members", "Useful when Costco gas or warehouse spending is high"],
+    important: "Requires a Costco membership and rewards are tied to Costco's certificate process.",
+    source: "https://www.citi.com/credit-cards/citi-costco-anywhere-visa-credit-card"
+  },
+  {
+    name: "Target Circle Card Credit Card",
+    issuer: "Target",
+    annualFee: "$0",
+    rewardTags: ["target", "big box"],
+    brandTags: ["target"],
+    rewards: ["5% discount at Target and Target.com on eligible purchases"],
+    benefits: ["Extra return time and shipping benefits may apply", "Simple store-specific savings"],
+    important: "Only makes sense if Target is a frequent shopping place.",
+    source: "https://www.target.com/circlecard"
+  },
+  {
+    name: "Southwest Rapid Rewards Plus Credit Card",
+    issuer: "Chase",
+    annualFee: "$99",
+    rewardTags: ["airline", "travel"],
+    brandTags: ["southwest"],
+    rewards: ["Rewards on Southwest purchases", "Rewards on select everyday and travel categories"],
+    benefits: ["Anniversary points", "Companion Pass qualifying points may apply"],
+    important: "Compare when Southwest is one of your most-used airlines.",
+    source: "https://creditcards.chase.com/travel-credit-cards/southwest/plus"
+  },
+  {
+    name: "United Explorer Card",
+    issuer: "Chase",
+    annualFee: "$150",
+    rewardTags: ["airline", "travel", "restaurants", "hotels"],
+    brandTags: ["united"],
+    rewards: ["Rewards on United purchases", "Rewards on dining and hotel stays", "1x mile on other purchases"],
+    benefits: ["First checked bag free may apply", "Priority boarding and United Club one-time passes may apply"],
+    important: "Compare when United is a frequent airline for the user.",
+    source: "https://creditcards.chase.com/travel-credit-cards/united/united-explorer"
+  },
+  {
+    name: "Marriott Bonvoy Boundless Credit Card",
+    issuer: "Chase",
+    annualFee: "$95",
+    rewardTags: ["hotels", "gas", "groceries", "restaurants"],
+    brandTags: ["marriott", "sheraton", "westin", "ritz-carlton", "st. regis", "courtyard", "fairfield", "residence inn"],
+    rewards: ["Rewards at Marriott Bonvoy hotels", "Bonus rewards in select everyday categories", "Rewards on other purchases"],
+    benefits: ["Free Night Award may apply each account anniversary", "Marriott Bonvoy elite night credits may apply"],
+    important: "Compare when Marriott-family hotels appear often in trip spending.",
+    source: "https://creditcards.chase.com/travel-credit-cards/marriott-bonvoy/boundless"
+  },
+  {
+    name: "Hilton Honors American Express Surpass Card",
+    issuer: "American Express",
+    annualFee: "$150",
+    rewardTags: ["hotels", "restaurants", "groceries", "gas"],
+    brandTags: ["hilton", "hampton", "doubletree", "embassy suites", "homewood", "waldorf", "conrad"],
+    rewards: ["High Hilton Honors points at Hilton properties", "Bonus points at U.S. restaurants, U.S. supermarkets, and U.S. gas stations", "Points on other purchases"],
+    benefits: ["Hilton Honors Gold status may apply", "Hilton statement credits and Free Night Reward opportunities may apply"],
+    important: "Compare when Hilton-family hotels appear often and benefits offset the annual fee.",
+    source: "https://www.americanexpress.com/us/credit-cards/card/hilton-honors-surpass/"
+  },
+  {
+    name: "World of Hyatt Credit Card",
+    issuer: "Chase",
+    annualFee: "$95",
+    rewardTags: ["hotels", "restaurants", "airline", "transit", "fitness"],
+    brandTags: ["hyatt", "hyatt place", "hyatt house", "park hyatt", "world of hyatt"],
+    rewards: ["Rewards at Hyatt hotels", "Bonus rewards in dining, airline tickets purchased directly, local transit, commuting, and fitness clubs", "Rewards on other purchases"],
+    benefits: ["Annual Free Night Award may apply", "World of Hyatt status and elite night credits may apply"],
+    important: "Compare when Hyatt-family hotels appear often in vacation spending.",
+    source: "https://creditcards.chase.com/travel-credit-cards/world-of-hyatt-credit-card"
+  }
+];
+
+function buildCreditCardRecommendations(signals) {
+  // Turns spending signals into general card types worth comparing.
+  // The app says "compare" because card terms, fees, and approval rules can change.
+  const recommendations = [];
+  const topGrocer = topMerchant(signals, "Groceries");
+  const topGas = topMerchant(signals, "Gas");
+  const topRestaurant = topMerchant(signals, "Restaurants");
+  const topTravel = topMerchant(signals, "Airlines and travel");
+  const topHotel = topMerchant(signals, "Hotels");
+  const categoryTotals = signals.categoryTotals;
+
+  if (merchantIncludes(topGrocer, cardBrandGroups.warehouse) || merchantIncludes(topGas, cardBrandGroups.warehouse)) {
+    addRecommendation(
+      recommendations,
+      "Compare warehouse club cards",
+      "A warehouse club shows up as a top store or gas station, so compare that store's card with cards that earn well at warehouse clubs and gas stations.",
+      `Best signal: ${(topGrocer?.name || topGas?.name || "Warehouse club")}`
+    );
+  }
+
+  if (merchantIncludes(topGrocer, ["target"])) {
+    addRecommendation(
+      recommendations,
+      "Compare Target-focused cards",
+      "Target is one of the strongest grocery or household spending signals, so a Target card could be useful if most of those purchases happen there.",
+      `Best signal: ${topGrocer.name}`
+    );
+  }
+
+  if (merchantIncludes(topGrocer, cardBrandGroups.bigBox)) {
+    addRecommendation(
+      recommendations,
+      "Compare big-box store cards",
+      "A lot of grocery-style spending is happening at a store like Target, Walmart, or Meijer, so compare that store's card with general grocery and flat cash-back cards.",
+      `Best signal: ${topGrocer.name}`
+    );
+  }
+
+  if (merchantIncludes(topGrocer, cardBrandGroups.grocery)) {
+    addRecommendation(
+      recommendations,
+      "Compare supermarket rewards cards",
+      "A grocery chain appears often, so compare grocery rewards cards and check whether that store counts as a supermarket for the card.",
+      `Best signal: ${topGrocer.name}`
+    );
+  }
+
+  if (merchantIncludes(topGas, cardBrandGroups.gas)) {
+    addRecommendation(
+      recommendations,
+      "Compare gas rewards cards",
+      "One gas station brand appears often, so compare that station's card with a general gas rewards card.",
+      `Best signal: ${topGas.name}`
+    );
+  }
+
+  if (merchantIncludes(topTravel, ["southwest"])) {
+    addRecommendation(
+      recommendations,
+      "Compare Southwest travel cards",
+      "Southwest appears in travel spending, so a Southwest card may be worth comparing with a flexible travel card.",
+      `Best signal: ${topTravel.name}`
+    );
+  }
+
+  if (merchantIncludes(topTravel, cardBrandGroups.airline)) {
+    addRecommendation(
+      recommendations,
+      "Compare airline cards",
+      "One airline appears often, so compare that airline's card with a flexible travel card before deciding.",
+      `Best signal: ${topTravel.name}`
+    );
+  }
+
+  if (merchantIncludes(topHotel, cardBrandGroups.hotel)) {
+    addRecommendation(
+      recommendations,
+      "Compare hotel cards",
+      "One hotel brand appears often, so a hotel card for that brand may be worth comparing with a flexible travel card.",
+      `Best signal: ${topHotel.name}`
+    );
+  }
+
+  if ((categoryTotals.Restaurants || 0) > 0) {
+    addRecommendation(
+      recommendations,
+      "Compare dining rewards cards",
+      "Restaurant spending is tracked separately, so a card with strong dining rewards could match this spending pattern.",
+      `Tracked restaurants: ${money.format(categoryTotals.Restaurants || 0)}`
+    );
+  }
+
+  if ((categoryTotals.Groceries || 0) > 0) {
+    addRecommendation(
+      recommendations,
+      "Compare grocery rewards cards",
+      "Groceries are a repeating category in the tracker, so a grocery rewards card could be useful if the rewards beat a simple cash-back card.",
+      `Tracked groceries: ${money.format(categoryTotals.Groceries || 0)}`
+    );
+  }
+
+  if (!recommendations.length || sortedTotals(categoryTotals).length >= 4) {
+    addRecommendation(
+      recommendations,
+      "Compare flat cash-back cards",
+      "When spending is spread across many places, a simple flat cash-back card can be easier than chasing a different card for every category.",
+      "Best for mixed spending"
+    );
+  }
+
+  return recommendations.slice(0, 6);
+}
+
+function cardMatchesMerchant(card, merchantEntries) {
+  return card.brandTags.some((brand) => (
+    merchantEntries.some((merchant) => merchant.name.toLowerCase().includes(brand))
+  ));
+}
+
+function scoreCreditCard(card, signals) {
+  const categoryTotals = signals.categoryTotals;
+  const merchantEntries = sortedMerchantList(signals.merchantTotals);
+  let score = 0;
+
+  if (cardMatchesMerchant(card, merchantEntries)) score += 10;
+  if ((categoryTotals.Groceries || 0) && card.rewardTags.includes("groceries")) score += 4;
+  if ((categoryTotals.Gas || 0) && card.rewardTags.includes("gas")) score += 4;
+  if ((categoryTotals.Restaurants || 0) && card.rewardTags.includes("restaurants")) score += 4;
+  if ((categoryTotals["Airlines and travel"] || 0) && (card.rewardTags.includes("travel") || card.rewardTags.includes("airline"))) score += 4;
+  if ((categoryTotals.Hotels || 0) && card.rewardTags.includes("hotels")) score += 4;
+  if (sortedTotals(categoryTotals).length >= 4 && (card.rewardTags.includes("flat cash back") || card.rewardTags.includes("flat miles"))) score += 3;
+  if (!Object.keys(categoryTotals).length && card.annualFee === "$0") score += 1;
+
+  return score;
+}
+
+function buildSpecificCardMatches(signals) {
+  // Scores every card, then shows the strongest matches first.
+  return creditCardLibrary
+    .map((card) => ({ ...card, score: scoreCreditCard(card, signals) }))
+    .filter((card) => card.score > 0)
+    .sort((a, b) => b.score - a.score || a.name.localeCompare(b.name))
+    .slice(0, 8);
+}
+
+function renderCardDetail(card) {
+  const rewards = card.rewards.map((item) => `<li>${escapeHtml(item)}</li>`).join("");
+  const benefits = card.benefits.map((item) => `<li>${escapeHtml(item)}</li>`).join("");
+  return `
+    <article class="credit-card-detail">
+      <div>
+        <span>${escapeHtml(card.issuer)} - annual fee: ${escapeHtml(card.annualFee)}</span>
+        <h4>${escapeHtml(card.name)}</h4>
+        <p>${escapeHtml(card.important)}</p>
+      </div>
+      <div class="card-detail-columns">
+        <div>
+          <strong>Rewards</strong>
+          <ul>${rewards}</ul>
+        </div>
+        <div>
+          <strong>Benefits</strong>
+          <ul>${benefits}</ul>
+        </div>
+      </div>
+      <a href="${escapeHtml(card.source)}" target="_blank" rel="noopener">Check current terms</a>
+    </article>
+  `;
+}
+
+function renderCreditCardGuide() {
+  // Saves the latest inputs, collects signals, then displays credit card comparison ideas.
+  if (!currentUser) return;
+  saveMonthlyBudget();
+  saveVacationBudget();
+
+  const signals = collectCardSignals();
+  const categoryEntries = sortedTotals(signals.categoryTotals);
+  const merchantEntries = sortedMerchantList(signals.merchantTotals);
+  const trackedTotal = categoryEntries.reduce((total, [, value]) => total + value, 0);
+  const topCategory = categoryEntries[0];
+  const topStore = merchantEntries[0];
+
+  cardSignalSummary.innerHTML = `
+    <div class="metric invested"><span>Tracked card spending</span><strong>${money.format(trackedTotal)}</strong></div>
+    <div class="metric save"><span>Top category</span><strong>${topCategory ? escapeHtml(topCategory[0]) : "None yet"}</strong></div>
+    <div class="metric growth"><span>Top merchant</span><strong>${topStore ? escapeHtml(topStore.name) : "Add store names"}</strong></div>
+  `;
+
+  const matchedCards = buildSpecificCardMatches(signals);
+  const generalRecommendations = buildCreditCardRecommendations(signals);
+  cardRecommendations.innerHTML = matchedCards.length ? matchedCards.map((card) => renderCardDetail(card)).join("") : generalRecommendations.map((recommendation) => `
+    <div class="recommendation-card">
+      <span>${escapeHtml(recommendation.reason)}</span>
+      <h4>${escapeHtml(recommendation.title)}</h4>
+      <p>${escapeHtml(recommendation.body)}</p>
+    </div>
+  `).join("");
+
+  cardLibrary.innerHTML = creditCardLibrary.map((card) => renderCardDetail(card)).join("");
+
+  if (!trackedTotal) {
+    merchantBreakdown.innerHTML = '<div class="empty">Add store or brand names in groceries, gas, restaurants, vacation travel, or hotels to see card suggestions.</div>';
+    return;
+  }
+
+  const merchantRows = categoryEntries.map(([category, total]) => {
+    const merchants = sortedMerchantList(signals.categoryMerchants[category]).slice(0, 3);
+    const merchantText = merchants.length
+      ? merchants.map((merchant) => `${escapeHtml(merchant.name)} (${money.format(merchant.total)})`).join(", ")
+      : "No store or brand names yet";
+    return `
+      <tr>
+        <td>${escapeHtml(category)}</td>
+        <td>${money.format(total)}</td>
+        <td>${merchantText}</td>
+      </tr>
+    `;
+  }).join("");
+
+  merchantBreakdown.innerHTML = `
+    <div class="history-table-wrap">
+      <table class="history-table">
+        <thead>
+          <tr>
+            <th>Category</th>
+            <th>Total</th>
+            <th>Top places</th>
+          </tr>
+        </thead>
+        <tbody>${merchantRows}</tbody>
+      </table>
+    </div>
+  `;
+}
+
+const helperAnswers = [
+  {
+    title: "Monthly budget",
+    keywords: ["start", "monthly", "budget", "income", "paycheck", "weekly", "biweekly", "every two weeks"],
+    answer: "Start on the Monthly page. Enter your income amount, choose whether you get paid monthly, weekly, or every 2 weeks, then add extra income if you have any. LoviesLedger turns that into a monthly estimate and updates the money-left number automatically."
+  },
+  {
+    title: "Savings and charity",
+    keywords: ["save", "savings", "saving", "charity", "donate", "tzedakah", "percent", "percentage"],
+    answer: "Savings and charity are percentage goals based on your total monthly income. For example, if your monthly income is $4,000 and savings is 20%, the app shows $800 for savings before calculating spending money left."
+  },
+  {
+    title: "Expenses",
+    keywords: ["expense", "expenses", "rent", "mortgage", "utilities", "grocery", "groceries", "gas", "bill", "bills", "necessary"],
+    answer: "Expenses are necessary purchases only. Use them for rent, mortgage, utilities, groceries, gas, insurance, medical bills, childcare, and similar essentials. Keeping these separate helps the app understand your real spending habits."
+  },
+  {
+    title: "Purchases and gifts",
+    keywords: ["purchase", "purchases", "shopping", "clothes", "shoes", "restaurant", "restaurants", "gift", "gifts"],
+    answer: "Purchases are flexible spending like clothes, shoes, electronics, restaurants, or personal items. Gifts are separate so birthdays, holidays, and presents do not get mixed into normal purchases."
+  },
+  {
+    title: "Recurring monthly items",
+    keywords: ["recurring", "repeat", "monthly purchase", "every month", "subscription", "one time", "one-time"],
+    answer: "Mark an item as Monthly if it repeats every month. When you start the next month, recurring monthly items copy forward automatically, while one-time purchases do not."
+  },
+  {
+    title: "Vacation budgets",
+    keywords: ["vacation", "trip", "travel", "flight", "airline", "hotel", "museum", "activity", "taxi", "uber"],
+    answer: "Use the Vacation page for trips. It separates travel, hotels, food, activities, and other trip costs. Each trip is saved, so the Summary page can show previous vacations and total trip costs."
+  },
+  {
+    title: "Investments",
+    keywords: ["investment", "invest", "index", "fund", "compound", "interest", "return", "stock", "etf", "voo", "vti", "spy"],
+    answer: "The Investments page is for index funds. Enter what you already have, how much you add, how often you add it, and the assumed annual return. The default 7.5% is only a long-term estimate, not a guarantee."
+  },
+  {
+    title: "Credit cards",
+    keywords: ["credit", "card", "cash back", "points", "miles", "rewards", "costco", "target", "southwest", "hotel", "airline"],
+    answer: "The Credit Cards page looks at spending categories and merchant names like Costco, Target, Southwest, Hilton, groceries, gas, and restaurants. It suggests cards to research, but you should check current fees, rewards, interest rates, and terms before applying."
+  },
+  {
+    title: "Summary page",
+    keywords: ["summary", "history", "previous", "last month", "total", "year", "all months", "past"],
+    answer: "The Summary page adds up saved months. It shows income, extra income, savings, charity, investments, expenses, purchases, gifts, money left, and vacation history."
+  },
+  {
+    title: "Privacy",
+    keywords: ["private", "privacy", "secure", "safe", "password", "data", "localstorage", "github"],
+    answer: "This no-hosting version saves data in this browser with localStorage. Do not put real bank passwords, secret API keys, or private banking information into public GitHub files."
+  },
+  {
+    title: "Financial advice",
+    keywords: ["advice", "guarantee", "guaranteed", "risk", "should i buy", "which stock", "recommend stock"],
+    answer: "I can explain how the app works, but I cannot guarantee returns or give personalized financial advice. Investment projections and credit card suggestions are educational estimates only."
+  }
+];
+
+function getHelperChatKey() {
+  return `${storageKeys.helperChats}.${currentUser || "guest"}`;
+}
+
+function getHelperHistory() {
+  return readJson(getHelperChatKey(), []);
+}
+
+function saveHelperHistory(history) {
+  writeJson(getHelperChatKey(), history.slice(-40));
+}
+
+function helperBotReply(message) {
+  // This is the no-hosting helper brain. Later, this function can call a hosted AI API instead.
+  const text = message.toLowerCase();
+  const scoredAnswers = helperAnswers.map((entry) => ({
+    ...entry,
+    score: entry.keywords.reduce((total, keyword) => total + (text.includes(keyword) ? 1 : 0), 0)
+  })).sort((a, b) => b.score - a.score);
+  const best = scoredAnswers[0];
+
+  if (best?.score > 0) {
+    return best.answer;
+  }
+
+  return "I can help with monthly budgets, expenses, recurring purchases, vacations, investments, summaries, credit cards, and privacy. Try asking: \"How do recurring purchases work?\" or \"What counts as expenses?\"";
+}
+
+function renderHelperMessages() {
+  const history = getHelperHistory();
+  const starter = [{
+    sender: "bot",
+    text: "Hi, I’m the LoviesLedger helper. Ask me how to use the budget, vacation, investment, summary, or credit card pages."
+  }];
+  const messages = history.length ? history : starter;
+
+  helperMessages.innerHTML = messages.map((message) => `
+    <div class="helper-message ${message.sender === "user" ? "from-user" : "from-bot"}">
+      ${escapeHtml(message.text)}
+    </div>
+  `).join("");
+  helperMessages.scrollTop = helperMessages.scrollHeight;
+}
+
+function addHelperMessage(sender, text) {
+  const history = getHelperHistory();
+  history.push({ sender, text, time: new Date().toISOString() });
+  saveHelperHistory(history);
+  renderHelperMessages();
+}
+
+function openHelper() {
+  helperPanel.classList.add("active");
+  helperToggle.setAttribute("aria-expanded", "true");
+  renderHelperMessages();
+  helperInput.focus();
+}
+
+function closeHelper() {
+  helperPanel.classList.remove("active");
+  helperToggle.setAttribute("aria-expanded", "false");
+}
+
 function renderHistorySummary() {
+  // Builds the Summary page table from every saved monthly budget.
   if (!currentUser) return;
   saveMonthlyBudget();
   saveVacationBudget();
@@ -1068,6 +1803,7 @@ function renderHistorySummary() {
 }
 
 function renderVacationHistorySummary() {
+  // Builds the vacation history table from every saved trip.
   const vacations = getVacations();
   const account = vacations[currentUser]?.trips ? vacations[currentUser] : ensureVacationAccount(vacations, currentUser);
   const trips = Object.values(account.trips)
@@ -1140,6 +1876,7 @@ function renderVacationHistorySummary() {
 }
 
 async function refreshMarketInfo() {
+  // Loads public market prices for typed ticker symbols. If the request fails, public links are still shown.
   const plan = collectInvestmentPlan();
   const tickers = uniqueTickers(plan.funds);
 
@@ -1175,6 +1912,7 @@ async function refreshMarketInfo() {
 }
 
 function clearRows(type, categories) {
+  // Resets a page back to one empty row per category.
   categories.forEach((category) => {
     document.querySelector(`#${type}-${category.key}-rows`).innerHTML = "";
     makeRow(type, category, { recurring: type === "monthly" ? category.recurringDefault : false });
@@ -1184,6 +1922,7 @@ function clearRows(type, categories) {
 renderCategoryInputs(monthlyInputs, monthlyCategories, "monthly");
 renderCategoryInputs(vacationInputs, vacationCategories, "vacation");
 
+// Event listeners connect user actions, like clicks and typing, to the functions above.
 monthlyInputs.addEventListener("click", (event) => {
   const addKey = event.target.dataset.add;
   if (!addKey) return;
@@ -1216,7 +1955,32 @@ monthlyNav.addEventListener("click", () => showPage("monthly"));
 vacationNav.addEventListener("click", () => showPage("vacation"));
 investmentsNav.addEventListener("click", () => showPage("investments"));
 summaryNav.addEventListener("click", () => showPage("summary"));
+creditCardsNav.addEventListener("click", () => showPage("creditCards"));
 refreshSummaryButton.addEventListener("click", renderHistorySummary);
+refreshCardsButton.addEventListener("click", renderCreditCardGuide);
+helperToggle.addEventListener("click", () => {
+  if (helperPanel.classList.contains("active")) {
+    closeHelper();
+  } else {
+    openHelper();
+  }
+});
+helperClose.addEventListener("click", closeHelper);
+helperForm.addEventListener("submit", (event) => {
+  event.preventDefault();
+  const question = helperInput.value.trim();
+  if (!question) return;
+  helperInput.value = "";
+  addHelperMessage("user", question);
+  addHelperMessage("bot", helperBotReply(question));
+});
+document.querySelectorAll("[data-helper-question]").forEach((button) => {
+  button.addEventListener("click", () => {
+    const question = button.dataset.helperQuestion;
+    addHelperMessage("user", question);
+    addHelperMessage("bot", helperBotReply(question));
+  });
+});
 
 logoutButton.addEventListener("click", () => {
   localStorage.removeItem(storageKeys.session);

@@ -5,6 +5,7 @@
 */
 
 :root {
+  /* Color variables make the design easier to change later from one place. */
   --ink: #17201c;
   --muted: #607068;
   --line: #d9e1dd;
@@ -38,9 +39,11 @@ body {
 button, input, select { font: inherit; }
 button { border: 0; cursor: pointer; }
 
+/* Screens are hidden by default. JavaScript adds .active to show login or the app. */
 .screen { min-height: 100vh; display: none; }
 .screen.active { display: block; }
 
+/* Login layout: left side is branding, right side is the login/signup form. */
 .login-screen {
   min-height: 100vh;
   display: none;
@@ -50,6 +53,7 @@ button { border: 0; cursor: pointer; }
 
 .login-screen.active { display: grid; }
 
+/* Branding area shown before login. */
 .brand-panel {
   padding: clamp(28px, 6vw, 72px);
   display: flex;
@@ -143,6 +147,7 @@ button { border: 0; cursor: pointer; }
   letter-spacing: 0.08em;
 }
 
+/* Login/signup form card. */
 .auth-panel {
   background: rgba(255, 255, 255, 0.88);
   border-left: 1px solid rgba(255, 255, 255, 0.8);
@@ -221,6 +226,7 @@ input:focus, select:focus {
 .icon-button { width: 44px; min-height: 44px; flex: 0 0 44px; background: #fff4f2; color: var(--rose-strong); border: 1px solid #ffd0c9; }
 .message { min-height: 24px; color: var(--rose-strong); font-weight: 800; margin-top: 12px; }
 
+/* Top navigation bar that stays visible while scrolling through the app. */
 .topbar {
   min-height: 74px;
   display: flex;
@@ -267,6 +273,7 @@ input:focus, select:focus {
 
 .user-email { color: var(--muted); font-size: 14px; overflow-wrap: anywhere; }
 
+/* Main app layout: form on the left, results on the right for wide screens. */
 main {
   padding: clamp(18px, 4vw, 44px);
   display: grid;
@@ -279,8 +286,10 @@ main {
 .page.active { display: contents; }
 .page.monthly-layout.active {
   display: grid;
-  grid-template-columns: 1fr;
+  grid-column: 1 / -1;
+  grid-template-columns: minmax(0, 0.9fr) minmax(0, 1.1fr);
   gap: 24px;
+  align-items: start;
 }
 
 .input-panel, .summary, .breakdown {
@@ -292,6 +301,7 @@ main {
 
 .input-panel { padding: clamp(18px, 3vw, 28px); }
 
+/* Shared form layout helpers. */
 .section-title {
   display: flex;
   justify-content: space-between;
@@ -310,6 +320,7 @@ main {
 .trip-tools { grid-template-columns: minmax(0, 1fr) auto; }
 .divider { height: 1px; background: var(--line); margin: 24px 0; }
 
+/* Rows for budget items. The name field is intentionally widest; amounts need less room. */
 .item-row {
   display: grid;
   grid-template-columns: minmax(280px, 1fr) minmax(110px, 150px) minmax(104px, 132px) 44px;
@@ -318,10 +329,15 @@ main {
   margin-top: 10px;
 }
 
+.merchant-row {
+  grid-template-columns: minmax(240px, 1.2fr) minmax(180px, 0.9fr) minmax(110px, 150px) minmax(104px, 132px) 44px;
+}
+
 .expense-row {
   grid-template-columns: minmax(360px, 1fr) minmax(110px, 140px) minmax(130px, 160px) minmax(104px, 132px) 44px;
 }
 
+/* Investment rows have extra columns for starting amount, contribution, and frequency. */
 .investment-row {
   display: grid;
   grid-template-columns: minmax(130px, 1fr) minmax(100px, 140px) minmax(100px, 140px) minmax(112px, 140px) 44px;
@@ -356,6 +372,7 @@ main {
 .results { display: grid; gap: 18px; }
 .summary { padding: clamp(20px, 4vw, 34px); overflow: hidden; }
 
+/* Big result number such as money left, vacation money left, or projected investment value. */
 .hero-number {
   display: grid;
   grid-template-columns: 1fr auto;
@@ -384,6 +401,7 @@ main {
 
 .status-pill.warning { background: var(--rose); color: var(--rose-strong); border-color: #ffc5bd; }
 
+/* Metric cards show totals for each category. */
 .summary-grid { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 12px; }
 .vacation-grid { grid-template-columns: repeat(5, minmax(0, 1fr)); }
 .investment-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); }
@@ -424,6 +442,7 @@ main {
 .contributed { background: var(--blue); }
 .growth { background: var(--gold); }
 
+/* Breakdown lists show the exact items the user entered. */
 .breakdown { padding: clamp(18px, 3vw, 28px); }
 .breakdown h3 { margin: 22px 0 4px; font-size: 20px; }
 .breakdown h3:first-child { margin-top: 0; }
@@ -453,6 +472,7 @@ main {
   padding: 14px;
 }
 
+/* Public market quote cards on the Investments page. */
 .quote-grid {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -498,6 +518,7 @@ main {
   font-weight: 850;
 }
 
+/* Scrollable tables keep long month histories usable on smaller screens. */
 .history-table-wrap {
   overflow-x: auto;
   border: 1px solid var(--line);
@@ -555,22 +576,234 @@ main {
   background: #fbfcfa;
 }
 
+/* Credit card recommendation cards. */
+.recommendation-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.recommendation-card {
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: #fff;
+  padding: 18px;
+}
+
+.recommendation-card span {
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 850;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+
+.recommendation-card h4 {
+  margin: 8px 0;
+  font-size: 20px;
+}
+
+.recommendation-card p {
+  margin: 0;
+  color: var(--muted);
+  line-height: 1.5;
+}
+
+.card-library {
+  display: grid;
+  gap: 12px;
+}
+
+.credit-card-detail {
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: #fff;
+  padding: 18px;
+}
+
+.credit-card-detail span {
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 850;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+
+.credit-card-detail h4 {
+  margin: 8px 0;
+  font-size: 20px;
+}
+
+.credit-card-detail p {
+  margin: 0 0 14px;
+  color: var(--muted);
+  line-height: 1.5;
+}
+
+.card-detail-columns {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 14px;
+}
+
+.card-detail-columns strong {
+  display: block;
+  margin-bottom: 6px;
+}
+
+.card-detail-columns ul {
+  margin: 0;
+  padding-left: 18px;
+  color: var(--muted);
+  line-height: 1.45;
+}
+
+.credit-card-detail a {
+  display: inline-flex;
+  margin-top: 14px;
+  color: var(--blue-strong);
+  font-weight: 850;
+}
+
+/* Floating no-hosting finance helper chat. */
+.finance-helper {
+  position: fixed;
+  right: 22px;
+  bottom: 22px;
+  z-index: 5;
+}
+
+.helper-toggle {
+  min-height: 48px;
+  border-radius: 999px;
+  padding: 0 18px;
+  background: var(--ink);
+  color: #fff;
+  font-weight: 900;
+  box-shadow: var(--shadow);
+}
+
+.helper-panel {
+  display: none;
+  width: min(380px, calc(100vw - 32px));
+  max-height: min(620px, calc(100vh - 110px));
+  margin-bottom: 12px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: #fff;
+  box-shadow: var(--shadow);
+  overflow: hidden;
+}
+
+.helper-panel.active {
+  display: grid;
+  grid-template-rows: auto minmax(180px, 1fr) auto auto;
+}
+
+.helper-header {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  align-items: start;
+  padding: 16px;
+  border-bottom: 1px solid var(--line);
+  background: #fbfcfa;
+}
+
+.helper-header h2 {
+  font-size: 20px;
+}
+
+.helper-header p {
+  margin: 4px 0 0;
+  color: var(--muted);
+}
+
+.helper-messages {
+  display: grid;
+  align-content: start;
+  gap: 10px;
+  padding: 14px;
+  overflow-y: auto;
+}
+
+.helper-message {
+  max-width: 86%;
+  border-radius: 8px;
+  padding: 11px 12px;
+  line-height: 1.45;
+}
+
+.helper-message.from-bot {
+  justify-self: start;
+  background: #eef3f0;
+  color: var(--ink);
+}
+
+.helper-message.from-user {
+  justify-self: end;
+  background: var(--mint-strong);
+  color: #fff;
+}
+
+.helper-suggestions {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  padding: 0 14px 12px;
+}
+
+.helper-suggestions button {
+  min-height: 34px;
+  border-radius: 999px;
+  padding: 0 11px;
+  background: #eef3f0;
+  color: var(--muted);
+  font-size: 13px;
+  font-weight: 850;
+}
+
+.helper-form {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 8px;
+  padding: 14px;
+  border-top: 1px solid var(--line);
+}
+
+.helper-form input {
+  min-height: 44px;
+}
+
+.helper-form .secondary {
+  min-height: 44px;
+}
+
+/* Tablet layout: stack the app into one column and tighten repeated grids. */
+@media (max-width: 1200px) and (min-width: 981px) {
+  .page.monthly-layout.active { grid-template-columns: 1fr; }
+}
+
 @media (max-width: 980px) {
   .login-screen.active, main { grid-template-columns: 1fr; }
   .page.active { display: block; }
-  .page.monthly-layout.active { display: grid; }
+  .page.monthly-layout.active { display: grid; grid-column: auto; grid-template-columns: 1fr; }
   .auth-panel { border-left: 0; border-top: 1px solid rgba(255, 255, 255, 0.8); }
   .brand-panel { min-height: 48vh; }
-  .summary-grid, .vacation-grid, .investment-grid, .quote-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-  .item-row, .expense-row { grid-template-columns: minmax(260px, 1fr) minmax(110px, 150px) minmax(104px, 132px) 44px; }
+  .summary-grid, .vacation-grid, .investment-grid, .quote-grid, .recommendation-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .item-row { grid-template-columns: minmax(260px, 1fr) minmax(110px, 150px) minmax(104px, 132px) 44px; }
+  .merchant-row, .expense-row { grid-template-columns: minmax(230px, 1fr) minmax(160px, 0.8fr) minmax(110px, 150px) minmax(104px, 132px) 44px; }
   .expense-row > div:nth-child(3) { grid-column: 1 / -1; }
   .investment-row { grid-template-columns: repeat(2, minmax(0, 1fr)) 44px; }
 }
 
+/* Phone layout: most form rows become one main field plus amount/remove controls. */
 @media (max-width: 680px) {
-  .mini-dashboard, .summary-grid, .vacation-grid, .investment-grid, .quote-grid, .income-grid, .month-tools { grid-template-columns: 1fr; }
-  .item-row, .expense-row { grid-template-columns: 1fr 104px 44px; }
-  .item-row > div:nth-child(3) { grid-column: 1 / -1; }
+  .mini-dashboard, .summary-grid, .vacation-grid, .investment-grid, .quote-grid, .recommendation-grid, .income-grid, .month-tools { grid-template-columns: 1fr; }
+  .card-detail-columns { grid-template-columns: 1fr; }
+  .item-row, .merchant-row, .expense-row { grid-template-columns: 1fr 104px 44px; }
+  .merchant-row > div:nth-child(2) { grid-column: 1 / -1; }
+  .merchant-row > div:nth-child(3) { grid-column: 1 / -1; }
   .investment-row { grid-template-columns: 1fr 104px 44px; }
   .investment-row .wide-field { grid-column: 1 / -1; }
   .recurring-field { grid-column: 1 / -1; order: 3; }
@@ -580,4 +813,7 @@ main {
   .nav-button { flex: 1; }
   .hero-number { grid-template-columns: 1fr; }
   .status-pill { width: fit-content; }
+  .finance-helper { right: 16px; bottom: 16px; left: 16px; }
+  .helper-toggle { width: 100%; }
+  .helper-panel { width: 100%; }
 }
