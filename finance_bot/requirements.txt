@@ -1,0 +1,6 @@
+flask
+flask-cors
+streamlit
+pandas
+deep-translator
+twilio
